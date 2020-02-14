@@ -2,7 +2,7 @@ package shark.messenger;
 
 import java.util.Date;
 
-public class MessengerPackage implements IPushableTarget {
+public class MessengerPackage implements MessengerTarget {
 
     public String PushKey;
     public String Type;

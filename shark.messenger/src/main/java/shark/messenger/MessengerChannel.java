@@ -1,6 +1,6 @@
 package shark.messenger;
 
-public class MessengerChannel implements IPushableTarget {
+public class MessengerChannel implements MessengerTarget {
 
     public String PushKey;
     public String PullKey;

@@ -1,4 +1,4 @@
-package shark.messenger;
+package shark.runtime;
 
 import org.junit.Test;
 

@@ -8,7 +8,7 @@ import shark.runtime.Function;
 import shark.runtime.Promise;
 import shark.utils.http;
 
-public class MessengerClient implements IPushableTarget {
+public class MessengerClient implements MessengerTarget {
 
     MessengerChannel _channel = null;
     String _server = null;
@@ -147,7 +147,7 @@ public class MessengerClient implements IPushableTarget {
         public Long Data;
     }
 
-    public Promise<Boolean> push(IPushableTarget target, String type, String data){
+    public Promise<Boolean> push(MessengerTarget target, String type, String data){
 
         MessengerChannel channel = _channel;
 

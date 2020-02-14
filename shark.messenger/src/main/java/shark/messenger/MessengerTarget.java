@@ -1,5 +1,5 @@
 package shark.messenger;
 
-public interface IPushableTarget {
+public interface MessengerTarget {
     public String getPushKey();
 }
