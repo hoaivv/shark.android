@@ -1,38 +1,37 @@
 package shark.messenger;
 
-import android.support.v4.util.Consumer;
-
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashSet;
 import java.util.concurrent.locks.ReentrantLock;
 
-import javax.net.ssl.HttpsURLConnection;
+import shark.runtime.Action;
+import shark.runtime.Promise;
 
 public class MessengerClient implements IPushableTarget {
 
     MessengerChannel _channel = null;
     String _server = null;
-    HashSet<Consumer<MessengerData>> _onDataEventListeners = new HashSet<Consumer<MessengerData>>();
+    HashSet<Action<MessengerData>> _onDataEventListeners = new HashSet<Action<MessengerData>>();
     ReentrantLock lock = new ReentrantLock();
 
-    <T> MessengerResponse<T> _GET(String server, String path) {
+    <T> MessengerResponse<T> _GET(Type typeOfT, String server, String path) {
 
         HttpURLConnection connection = null;
         InputStreamReader reader = null;
         try
         {
             connection = (HttpURLConnection)(new URL("http://" + server + "/messenger/" + path)).openConnection();
-            connection.connect();
-
             reader = new InputStreamReader(connection.getInputStream());
 
-            return new Gson().fromJson(reader, new MessengerResponse<T>(){}.getClass());
+            return new Gson().fromJson(reader, TypeToken.getParameterized(MessengerResponse.class, typeOfT).getType());
         }
         catch (Exception e) {
 
@@ -51,7 +50,7 @@ public class MessengerClient implements IPushableTarget {
             if (connection != null) connection.disconnect();
         }
     }
-    <T> MessengerResponse<T> _POST(String server, String path, Object obj) {
+    <T> MessengerResponse<T> _POST(Type typeOfT, String server, String path, Object obj) {
 
         HttpURLConnection connection = null;
         InputStreamReader reader = null;
@@ -59,8 +58,6 @@ public class MessengerClient implements IPushableTarget {
         try
         {
             connection = (HttpURLConnection)(new URL("http://" + server + "/messenger/" + path)).openConnection();
-
-            connection.connect();
 
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type","application/json");
@@ -74,7 +71,7 @@ public class MessengerClient implements IPushableTarget {
             writer = null;
 
             reader = new InputStreamReader(connection.getInputStream());
-            return gson.fromJson(reader, new MessengerResponse<T>(){}.getClass());
+            return gson.fromJson(reader, TypeToken.getParameterized(MessengerResponse.class, typeOfT).getType());
         }
         catch (Exception e) {
 
@@ -120,7 +117,7 @@ public class MessengerClient implements IPushableTarget {
         return _channel == null ? null : _channel.Description;
     }
 
-    public void addOnDataEventListener(Consumer<MessengerData> listener) {
+    public void addOnDataEventListener(Action<MessengerData> listener) {
 
         try {
             lock.lock();
@@ -132,7 +129,7 @@ public class MessengerClient implements IPushableTarget {
         }
     }
 
-    public void removeOnDataEventListener(Consumer<MessengerData> listener){
+    public void removeOnDataEventListener(Action<MessengerData> listener){
 
         try {
             lock.lock();
@@ -163,7 +160,7 @@ public class MessengerClient implements IPushableTarget {
 
             try {
                 while (client._channel == channel) {
-                    MessengerResponse<MessengerData[]> response = _GET(client._server, channel.PullKey);
+                    MessengerResponse<MessengerData[]> response = _GET(MessengerData.class, client._server, channel.PullKey);
 
                     MessengerData[] all = response == null || !response.Succeed || response.Data == null ? new MessengerData[0] : response.Data;
 
@@ -172,8 +169,8 @@ public class MessengerClient implements IPushableTarget {
                         try {
                             lock.lock();
 
-                            for (Consumer<MessengerData> listener : client._onDataEventListeners)
-                                listener.accept(one);
+                            for (Action<MessengerData> listener : client._onDataEventListeners)
+                                listener.process(one);
                         } finally {
                             lock.unlock();
                         }
@@ -192,51 +189,83 @@ public class MessengerClient implements IPushableTarget {
         }
     }
 
-    public boolean register(String description) throws IllegalArgumentException
-    {
-        if (description == null || description.length() == 0) throw new IllegalArgumentException("description");
+    public Promise<Boolean> register(String description) throws IllegalArgumentException {
+        if (description == null || description.length() == 0)
+            throw new IllegalArgumentException("description");
 
-        MessengerChannel request = new MessengerChannel();
+        final MessengerChannel request = new MessengerChannel();
+
         request.Description = description;
 
-        MessengerResponse<MessengerChannel> response = _POST(_server, "register", request);
+        final MessengerClient client = this;
+        final Promise<Boolean> result = new Promise<>();
 
-        MessengerChannel channel = _channel = response == null || !response.Succeed ? null : response.Data;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
 
-        if (channel != null){
+                MessengerResponse<MessengerChannel> response = _POST(MessengerChannel.class, _server, "register", request);
+                MessengerChannel channel = _channel = response == null || !response.Succeed ? null : response.Data;
 
-            new Puller(this, channel).run();
-            return true;
-        }
+                if (channel != null) {
+                    new Puller(client, channel).run();
+                }
 
-        return  false;
+                result.resolve(channel != null);
+            }
+        }).start();
+
+        return result;
     }
 
     public void unregister(){
         _channel = null;
     }
 
-    public boolean push(IPushableTarget target, String type, String data){
+    public Promise<Boolean> push(IPushableTarget target, String type, String data){
 
         MessengerChannel channel = _channel;
 
-        String sender = channel == null ? null : channel.PushKey;
-        String receiver = target == null ? null : target.getPushKey();
+        final String sender = channel == null ? null : channel.PushKey;
+        final String receiver = target == null ? null : target.getPushKey();
 
-        if (sender == null || sender.length() == 0 || receiver == null || receiver.length() == 0 || type == null || type.length() == 0) return false;
+        final Promise<Boolean> result = new Promise<>();
 
-        MessengerData request = new MessengerData();
+        if (sender == null || sender.length() == 0 || receiver == null || receiver.length() == 0 || type == null || type.length() == 0){
+
+            result.resolve(false);
+            return result;
+        }
+
+        final MessengerData request = new MessengerData();
+
         request.PushKey = sender;
         request.Type = type;
         request.Data = data;
 
-        MessengerResponse<Long> response = _POST(_server, receiver, request);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                MessengerResponse<Long> response = _POST(Long.class, _server, receiver, request);
+                result.resolve(response != null && response.Succeed && response.Data > 0);
+            }
+        }).start();
 
-        return  response != null && response.Succeed && response.Data > 0;
+        return result;
     }
 
-    public MessengerChannel[] getChannels() {
-        MessengerResponse<MessengerChannel[]> response =  _GET(_server, "channels");
-        return response != null && response.Succeed == true ? response.Data : new MessengerChannel[0];
+    public Promise<MessengerChannel[]> getChannels() {
+
+        final Promise<MessengerChannel[]> result = new Promise<>();
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                MessengerResponse < MessengerChannel[]> response =  _GET(MessengerChannel[].class, _server, "channels");
+                result.resolve(response != null && response.Succeed == true ? response.Data : new MessengerChannel[0]);
+            }
+        }).start();
+
+        return result;
     }
 }

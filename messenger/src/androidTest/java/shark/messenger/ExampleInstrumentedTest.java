@@ -3,9 +3,13 @@ package shark.messenger;
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
+import android.support.v4.util.Consumer;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import shark.runtime.Action;
+import shark.runtime.Function;
 
 import static org.junit.Assert.*;
 
@@ -22,5 +26,35 @@ public class ExampleInstrumentedTest {
         Context appContext = InstrumentationRegistry.getTargetContext();
 
         assertEquals("shark.messenger.test", appContext.getPackageName());
+
+        final MessengerClient client = new MessengerClient("api.ahacafe.vn");
+
+                client.register("test").then(new Action<Boolean>() {
+                    @Override
+                    public void process(Boolean data) {
+                        if (data) {
+
+                            client.addOnDataEventListener(new Action<MessengerData>() {
+                                @Override
+                                public void process(MessengerData data) {
+                                    // do something
+                                }
+                            });
+
+                            new Thread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        while (client.isReady()) {
+                                            client.push(client, "text", "test message");
+                                            Thread.sleep(1000);
+                                        }
+                                    } catch (InterruptedException e) {
+                                    }
+                                }
+                            }).start();
+                        }
+                    }
+                });
     }
 }
