@@ -48,12 +48,16 @@ public final class http {
             connection = null;
         }
 
-        public Promise<Object> getObject(final Type type) throws IllegalArgumentException, IOException {
+        public <T> Promise<T> getObject(T instance) {
 
-            if (connection == null) throw new IOException();
-            if (type == null) throw new IllegalArgumentException();
+            final Promise<T> result = new Promise<>();
 
-            final Promise<Object> result = new Promise<>();
+            if (connection == null || instance == null) {
+                result.resolve(null);
+                return result;
+            }
+
+            final Type type = instance.getClass();
 
             new Thread(new Runnable() {
                 @Override
@@ -64,7 +68,7 @@ public final class http {
                     try {
                         reader = new InputStreamReader(connection.getInputStream());
 
-                        result.resolve(new Gson().fromJson(reader, type));
+                        result.resolve((T)new Gson().fromJson(reader, type));
                     }
                     catch (Exception e1) {
 
@@ -85,11 +89,14 @@ public final class http {
             return result;
         }
 
-        public Promise<byte[]> getBytes() throws IOException {
-
-            if (connection == null) throw new IOException();
+        public Promise<byte[]> getBytes() {
 
             final Promise<byte[]> result = new Promise<>();
+
+            if (connection == null) {
+                result.resolve(null);
+                return  result;
+            }
 
             new Thread(new Runnable() {
                 @Override
@@ -130,7 +137,7 @@ public final class http {
             return result;
         }
 
-        public Promise<String> getString() throws IOException {
+        public Promise<String> getString() {
 
             return getBytes().<String>then(new Function<byte[], String>() {
                 @Override
@@ -146,10 +153,18 @@ public final class http {
         }
     }
 
-    public Promise<Response> get(String url) throws MalformedURLException{
+    public Promise<Response> get(String url) {
 
         final Promise<Response> result = new Promise<>();
-        final URL target = new URL(url);
+        final URL target;
+
+        try {
+             target = new URL(url);
+        }
+        catch (MalformedURLException e){
+            result.resolve(null);
+            return result;
+        }
 
         new Thread(new Runnable() {
             @Override
@@ -172,13 +187,23 @@ public final class http {
         return result;
     }
 
-    public Promise<Response> post(String url, final String contentType, final byte[] data) throws MalformedURLException, IllegalArgumentException {
+    public Promise<Response> post(String url, final String contentType, final byte[] data) {
 
         final Promise<Response> result = new Promise<>();
-        final URL target = new URL(url);
+        final URL target;
 
-        if (contentType == null || contentType.length() == 0) throw  new IllegalArgumentException("contentType");
-        if (data == null) throw new IllegalArgumentException("data");
+        try {
+            target = new URL(url);
+        }
+        catch (MalformedURLException e){
+            result.resolve(null);
+            return result;
+        }
+
+        if (contentType == null || contentType.length() == 0 || data == null) {
+            result.resolve(null);
+            return result;
+        }
 
         new Thread(new Runnable() {
             @Override
@@ -225,7 +250,7 @@ public final class http {
         return result;
     }
 
-    public Promise<Response> post(String url, Object obj) throws MalformedURLException, IllegalArgumentException {
+    public Promise<Response> post(String url, Object obj) {
 
         try {
             return post(url, "application/json", new Gson().toJson(obj).getBytes("UTF-8"));
@@ -236,9 +261,13 @@ public final class http {
         }
     }
 
-    public Promise<Response> post(String url, String contentType, String data) throws MalformedURLException, IllegalArgumentException {
+    public Promise<Response> post(String url, String contentType, String data) {
 
-        if (data == null) throw new IllegalArgumentException("data");
+        if (data == null) {
+            Promise<Response> result = new Promise<>();
+            result.resolve(null);
+            return result;
+        }
 
         try {
             return post(url, contentType, data.getBytes("UTF-8"));

@@ -10,6 +10,13 @@ public class Promise<T> {
 
     ReentrantLock lock = new ReentrantLock();
 
+    public Promise(){
+    }
+
+    public Promise(T dataToResolve){
+        resolve(dataToResolve);
+    }
+
     public void resolve(T data){
 
         try {
@@ -24,6 +31,25 @@ public class Promise<T> {
         }
         finally {
             lock.unlock();
+        }
+    }
+
+    public T getResult() {
+
+        try {
+            while (true) {
+                try {
+                    lock.lock();
+                    if (!results.isEmpty()) return results.pop();
+                } finally {
+                    lock.unlock();
+                }
+
+                Thread.sleep(10);
+            }
+        }
+        catch (InterruptedException e){
+            return null;
         }
     }
 
