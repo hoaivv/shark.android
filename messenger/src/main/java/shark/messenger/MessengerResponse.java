@@ -1,7 +1,5 @@
 package shark.messenger;
 
-class MessengerResponse<T> {
-
+abstract class MessengerResponse {
     public boolean Succeed;
-    public T Data;
 }

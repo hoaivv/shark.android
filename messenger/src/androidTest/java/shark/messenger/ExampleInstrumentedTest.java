@@ -3,13 +3,11 @@ package shark.messenger;
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
-import android.support.v4.util.Consumer;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import shark.runtime.Action;
-import shark.runtime.Function;
 
 import static org.junit.Assert.*;
 
@@ -34,9 +32,9 @@ public class ExampleInstrumentedTest {
                     public void process(Boolean data) {
                         if (data) {
 
-                            client.addOnDataEventListener(new Action<MessengerData>() {
+                            client.addOnDataEventListener(new Action<MessengerPackage>() {
                                 @Override
-                                public void process(MessengerData data) {
+                                public void process(MessengerPackage data) {
                                     // do something
                                 }
                             });

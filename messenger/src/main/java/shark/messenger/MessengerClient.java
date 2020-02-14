@@ -12,7 +12,7 @@ public class MessengerClient implements IPushableTarget {
 
     MessengerChannel _channel = null;
     String _server = null;
-    HashSet<Action<MessengerData>> _onDataEventListeners = new HashSet<Action<MessengerData>>();
+    HashSet<Action<MessengerPackage>> _onDataEventListeners = new HashSet<Action<MessengerPackage>>();
     ReentrantLock lock = new ReentrantLock();
 
     public int interval = 500;
@@ -33,7 +33,7 @@ public class MessengerClient implements IPushableTarget {
         return _channel == null ? null : _channel.Description;
     }
 
-    public void addOnDataEventListener(Action<MessengerData> listener) {
+    public void addOnDataEventListener(Action<MessengerPackage> listener) {
 
         try {
             lock.lock();
@@ -45,7 +45,7 @@ public class MessengerClient implements IPushableTarget {
         }
     }
 
-    public void removeOnDataEventListener(Action<MessengerData> listener){
+    public void removeOnDataEventListener(Action<MessengerPackage> listener){
 
         try {
             lock.lock();
@@ -67,6 +67,10 @@ public class MessengerClient implements IPushableTarget {
         this._server = "http://" + server + "/messenger";
     }
 
+    class PullResponse extends MessengerResponse {
+        public MessengerPackage[] Data;
+    }
+
     class Puller extends Thread {
 
         MessengerChannel channel;
@@ -78,15 +82,15 @@ public class MessengerClient implements IPushableTarget {
                 while (client._channel == channel) {
 
                     http.Response httpResponse = http.Client.get(_server + "/" + channel.PullKey).getResult();
-                    MessengerResponse<MessengerData[]> response = httpResponse == null ? null : httpResponse.getObject(new MessengerResponse<MessengerData[]>(){}).getResult();
-                    MessengerData[] all = response == null || !response.Succeed || response.Data == null ? new MessengerData[0] : response.Data;
+                    PullResponse response = httpResponse == null ? null : httpResponse.getObject(new PullResponse()).getResult();
+                    MessengerPackage[] all = response == null || !response.Succeed || response.Data == null ? new MessengerPackage[0] : response.Data;
 
-                    for (MessengerData one : all) {
+                    for (MessengerPackage one : all) {
 
                         try {
                             lock.lock();
 
-                            for (Action<MessengerData> listener : client._onDataEventListeners)
+                            for (Action<MessengerPackage> listener : client._onDataEventListeners)
                                 listener.process(one);
                         } finally {
                             lock.unlock();
@@ -106,7 +110,9 @@ public class MessengerClient implements IPushableTarget {
         }
     }
 
-    class RegisterResponse extends MessengerResponse<MessengerChannel>{}
+    class RegisterResponse extends MessengerResponse {
+        public MessengerChannel Data;
+    }
 
     public Promise<Boolean> register(String description) {
 
@@ -121,11 +127,11 @@ public class MessengerClient implements IPushableTarget {
             @Override
             public Boolean process(http.Response data) {
 
-                MessengerResponse<MessengerChannel> response = data == null ? null : data.getObject(new RegisterResponse()).getResult();
+                RegisterResponse response = data == null ? null : data.getObject(new RegisterResponse()).getResult();
                 MessengerChannel channel = _channel = response == null || !response.Succeed ? null : response.Data;
 
                 if (channel != null) {
-                    new Puller(client, channel).run();
+                    new Puller(client, channel).start();
                 }
 
                 return channel != null;
@@ -135,6 +141,10 @@ public class MessengerClient implements IPushableTarget {
 
     public void unregister(){
         _channel = null;
+    }
+
+    class PushResponse extends MessengerResponse{
+        public Long Data;
     }
 
     public Promise<Boolean> push(IPushableTarget target, String type, String data){
@@ -148,7 +158,7 @@ public class MessengerClient implements IPushableTarget {
 
         if (sender == null || sender.length() == 0 || receiver == null || receiver.length() == 0 || type == null || type.length() == 0) return new Promise<>(false);
 
-        final MessengerData request = new MessengerData();
+        final MessengerPackage request = new MessengerPackage();
 
         request.PushKey = sender;
         request.Type = type;
@@ -158,10 +168,14 @@ public class MessengerClient implements IPushableTarget {
             @Override
             public Boolean process(http.Response httpResponse) {
 
-                MessengerResponse<Long> response = httpResponse == null ? null : httpResponse.getObject(new MessengerResponse<Long>(){}).getResult();
+                PushResponse response = httpResponse == null ? null : httpResponse.getObject(new PushResponse()).getResult();
                 return response != null && response.Succeed && response.Data > 0;
             }
         });
+    }
+
+    class ChannelsResponse extends MessengerResponse {
+        public MessengerChannel[] Data;
     }
 
     public Promise<MessengerChannel[]> getChannels() {
@@ -169,7 +183,7 @@ public class MessengerClient implements IPushableTarget {
         return http.Client.get(_server + "/channels").then(new Function<http.Response, MessengerChannel[]>() {
             @Override
             public MessengerChannel[] process(http.Response httpResponse) {
-                MessengerResponse<MessengerChannel[]> response =  httpResponse == null ? null : httpResponse.getObject(new MessengerResponse<MessengerChannel[]>(){}).getResult();
+                ChannelsResponse response =  httpResponse == null ? null : httpResponse.getObject(new ChannelsResponse()).getResult();
                 return response != null && response.Succeed == true ? response.Data : new MessengerChannel[0];
             }
         });
