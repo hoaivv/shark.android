@@ -1,6 +1,5 @@
 package shark.messenger;
 
-import java.util.HashSet;
 import java.util.concurrent.locks.ReentrantLock;
 
 import shark.runtime.Action;
@@ -12,7 +11,11 @@ public class MessengerClient implements MessengerTarget {
 
     MessengerChannel _channel = null;
     String _server = null;
-    HashSet<Action<MessengerPackage>> _onDataEventListeners = new HashSet<Action<MessengerPackage>>();
+
+    public Action<MessengerPackage> onPackageReceived = null;
+    public Runnable onChannelRegistered = null;
+    public Runnable onChannelTerminated = null;
+
     ReentrantLock lock = new ReentrantLock();
 
     public int interval = 500;
@@ -31,29 +34,6 @@ public class MessengerClient implements MessengerTarget {
 
     public String getDescription() {
         return _channel == null ? null : _channel.Description;
-    }
-
-    public void addOnDataEventListener(Action<MessengerPackage> listener) {
-
-        try {
-            lock.lock();
-
-            _onDataEventListeners.add(listener);
-        }
-        finally {
-            lock.unlock();
-        }
-    }
-
-    public void removeOnDataEventListener(Action<MessengerPackage> listener){
-
-        try {
-            lock.lock();
-            _onDataEventListeners.remove(listener);
-        }
-        finally {
-            lock.unlock();
-        }
     }
 
     public MessengerClient(String server, int interval){
@@ -83,21 +63,38 @@ public class MessengerClient implements MessengerTarget {
 
                     http.Response httpResponse = http.Client.get(_server + "/" + channel.PullKey).getResult();
                     PullResponse response = httpResponse == null ? null : httpResponse.getObject(new PullResponse()).getResult();
-                    MessengerPackage[] all = response == null || !response.Succeed || response.Data == null ? new MessengerPackage[0] : response.Data;
 
-                    for (MessengerPackage one : all) {
+                    if (response != null && response.Succeed && response.Data != null) {
 
-                        try {
-                            lock.lock();
+                        Action<MessengerPackage> callback = onPackageReceived;
+                        if (callback != null) for (MessengerPackage one : response.Data) try { callback.process(one); } catch (Exception e) { }
 
-                            for (Action<MessengerPackage> listener : client._onDataEventListeners)
-                                listener.process(one);
-                        } finally {
-                            lock.unlock();
+                        Thread.sleep(Math.max(1, client.interval));
+                    }
+                    else {
+
+                        boolean alive = false;
+
+                        for (MessengerChannel one : getChannels().getResult()) {
+                            if (one.PushKey == channel.PushKey) {
+                                alive = true;
+                                break;
+                            }
+                        }
+
+                        if (!alive) {
+
+                            try {
+
+                                lock.lock();
+
+                                if (client._channel == channel) client.unregister();
+                            }
+                            finally {
+                                lock.unlock();
+                            }
                         }
                     }
-
-                    Thread.sleep(Math.max(1, client.interval));
                 }
             }
             catch (Exception e) {
@@ -128,10 +125,23 @@ public class MessengerClient implements MessengerTarget {
             public Boolean process(http.Response data) {
 
                 RegisterResponse response = data == null ? null : data.getObject(new RegisterResponse()).getResult();
-                MessengerChannel channel = _channel = response == null || !response.Succeed ? null : response.Data;
+                MessengerChannel channel = response == null || !response.Succeed ? null : response.Data;
 
                 if (channel != null) {
-                    new Puller(client, channel).start();
+
+                    try {
+                        lock.lock();
+
+                        _channel = channel;
+
+                        Runnable callback = onChannelRegistered;
+                        if (callback != null) callback.run();
+                    }
+                    finally {
+
+                        lock.unlock();
+                        new Puller(client, channel).start();
+                    }
                 }
 
                 return channel != null;
@@ -140,7 +150,21 @@ public class MessengerClient implements MessengerTarget {
     }
 
     public void unregister(){
-        _channel = null;
+
+        try {
+
+            lock.lock();
+
+            if (_channel != null) {
+
+                _channel = null;
+                Runnable callback = onChannelTerminated;
+                if (callback != null) callback.run();
+            }
+        }
+        finally {
+            lock.unlock();
+        }
     }
 
     class PushResponse extends MessengerResponse{
