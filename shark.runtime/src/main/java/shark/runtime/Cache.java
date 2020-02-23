@@ -8,6 +8,8 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import shark.delegates.Action1;
+import shark.delegates.Function;
 import shark.io.Binary;
 import shark.io.File;
 import shark.runtime.serialization.Serializer;
@@ -115,7 +117,7 @@ public class Cache<TIndex, TData> {
                 clear(CacheController.getLastCleanupStamp());
             }
 
-            CacheController.onCleanup.add(new Action.One<Long>() {
+            CacheController.onCleanup.add(new Action1<Long>() {
                 @Override
                 public void run(Long arg) {
 
@@ -133,7 +135,7 @@ public class Cache<TIndex, TData> {
     }
 
 
-    private Action.One<CacheEntryModifiedEventArgs<TIndex, TData>> _entryModified = new Action.One<CacheEntryModifiedEventArgs<TIndex, TData>>() {
+    private Action1<CacheEntryModifiedEventArgs<TIndex, TData>> _entryModified = new Action1<CacheEntryModifiedEventArgs<TIndex, TData>>() {
         @Override
         public void run(CacheEntryModifiedEventArgs<TIndex, TData> arg) {
 

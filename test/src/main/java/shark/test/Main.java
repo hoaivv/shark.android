@@ -7,7 +7,8 @@ import android.util.Log;
 import android.webkit.WebView;
 
 import shark.Framework;
-import shark.runtime.Action;
+import shark.delegates.Action;
+import shark.delegates.Action1;
 import shark.runtime.Cache;
 import shark.runtime.Parallel;
 import shark.utils.LogData;
@@ -29,7 +30,7 @@ public class Main extends Activity {
 
         setContentView(view);
 
-        Framework.onLogged.add(new Action.One<LogData>() {
+        Framework.onLogged.add(new Action1<LogData>() {
             @Override
             public void run(LogData eventArgs) {
 

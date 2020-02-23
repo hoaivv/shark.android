@@ -2,6 +2,8 @@ package shark.runtime;
 
 import java.util.LinkedList;
 
+import shark.delegates.Action2;
+
 /**
  * Provides information of an asynchronous operation managed by Shark Framework
  */
@@ -9,10 +11,10 @@ public abstract class AsyncOperationState implements IAsyncOperationState {
 
     class _CallbackInfo {
 
-        Action.Two<IAsyncOperationState, Object> callback;
+        Action2<IAsyncOperationState, Object> callback;
         Object state;
 
-        public Action.Two<IAsyncOperationState, Object> getCallback(){
+        public Action2<IAsyncOperationState, Object> getCallback(){
             return callback;
         }
 
@@ -20,7 +22,7 @@ public abstract class AsyncOperationState implements IAsyncOperationState {
             return state;
         }
 
-        public _CallbackInfo(Action.Two<IAsyncOperationState, Object> callback, Object state)
+        public _CallbackInfo(Action2<IAsyncOperationState, Object> callback, Object state)
         {
             this.callback = callback;
             this.state = state;
@@ -29,7 +31,7 @@ public abstract class AsyncOperationState implements IAsyncOperationState {
 
     class _CallbackConverterInfo<T> {
 
-        Action.Two<T, Object> callback;
+        Action2<T, Object> callback;
         T onFailure;
         Object state;
 
@@ -41,11 +43,11 @@ public abstract class AsyncOperationState implements IAsyncOperationState {
             return onFailure;
         }
 
-        public Action.Two<T, Object> getCallback(){
+        public Action2<T, Object> getCallback(){
             return callback;
         }
 
-        public _CallbackConverterInfo(Action.Two<T, Object> callback, T onFailure, Object state){
+        public _CallbackConverterInfo(Action2<T, Object> callback, T onFailure, Object state){
             this.callback = callback;
             this.onFailure = onFailure;
             this.state = state;
@@ -115,7 +117,7 @@ public abstract class AsyncOperationState implements IAsyncOperationState {
      * @param callback callback to be registered.
      * @param state object to be passed to the callback when it is invoked.
      */
-    public final void registerCallback(Action.Two<IAsyncOperationState, Object> callback, Object state){
+    public final void registerCallback(Action2<IAsyncOperationState, Object> callback, Object state){
 
         if (callback == null) throw  new IllegalArgumentException("callback");
 
@@ -136,11 +138,11 @@ public abstract class AsyncOperationState implements IAsyncOperationState {
      * @param onFailure value to be passed to the callback in case the operation is failed
      * @param <T> type of expected response from the operation
      */
-    public final <T> void registerCallback(Action.Two<T, Object> callback, Object state, T onFailure) {
+    public final <T> void registerCallback(Action2<T, Object> callback, Object state, T onFailure) {
 
         if (callback == null) throw  new IllegalArgumentException("callback");
 
-        registerCallback(new Action.Two<IAsyncOperationState, Object>() {
+        registerCallback(new Action2<IAsyncOperationState, Object>() {
             @Override
             public void run(IAsyncOperationState result, Object state) {
 

@@ -1,17 +1,19 @@
-package shark.runtime;
+package shark.runtime.events;
 
 import java.util.HashSet;
 
-/**
- * Decribes an event which provides one argument to its listeners and expects no return from the listeners
- * @param <T> type of event argument to be passed to listeners
- * @see FunctionEvent
- * @see ActionTrigger
- * @see FunctionTrigger
- */
-public final class ActionEvent<T> {
+import shark.delegates.Action;
 
-    private HashSet<Action.One<T>> handlers = new HashSet<>();
+/**
+ * Describes an event which provides no information to its listeners and expects no return
+ * from the listeners.
+ * @see ActionEvent
+ * @see FunctionTrigger
+ * @see FunctionEvent
+ */
+public final class ActionTrigger {
+
+    private HashSet<Action> handlers = new HashSet<>();
 
     /**
      * Indicates whether the event is listened or not
@@ -29,7 +31,7 @@ public final class ActionEvent<T> {
      * the event.
      * @param handler listener to be added
      */
-    public final void add(Action.One<T> handler) {
+    public final void add(Action handler) {
 
         if (handler == null) throw new IllegalArgumentException("listener");
 
@@ -43,10 +45,10 @@ public final class ActionEvent<T> {
      * the event.
      * @param handler listener to be removed.
      */
-    public final void remove(Action.One<T> handler) {
+    public final void remove(Action handler) {
         if (handler == null) throw new IllegalArgumentException("listener");
 
-        synchronized (handlers) {
+        synchronized (handlers){
             handlers.remove(handler);
         }
     }
@@ -57,7 +59,7 @@ public final class ActionEvent<T> {
      * Create an event.
      * @param owner owner of the event. This object is used to protect the event from illegal access
      */
-    public ActionEvent(Object owner) {
+    public ActionTrigger(Object owner) {
 
         this.owner = owner;
     }
@@ -65,16 +67,15 @@ public final class ActionEvent<T> {
     /**
      * Invokes the event listeners.
      * @param owner owner of the event.
-     * @param eventArgs argument to be passed to event listeners.
      * @throws IllegalAccessException throws if the provided owner is different from the owner
      * provided when the event is created.
      */
-    public final void invoke(Object owner, T eventArgs) throws IllegalAccessException {
+    public final void invoke(Object owner) throws IllegalAccessException {
 
         if (this.owner != owner) throw new IllegalAccessException("An event could only be invoked by its owner class.");
 
         synchronized (handlers) {
-            for (Action.One<T> handler : handlers) handler.run(eventArgs);
+            for (Action handler : handlers) handler.run();
         }
     }
 }

@@ -1,7 +1,7 @@
 package shark.messenger;
 
-import shark.runtime.Action;
-import shark.runtime.Function;
+import shark.delegates.Action1;
+import shark.delegates.Function1;
 import shark.runtime.Promise;
 import shark.utils.http;
 
@@ -10,7 +10,7 @@ public class MessengerClient implements MessengerTarget {
     MessengerChannel _channel = null;
     String _server = null;
 
-    public Action.One<MessengerPackage> onPackageReceived = null;
+    public Action1<MessengerPackage> onPackageReceived = null;
     public Runnable onChannelRegistered = null;
     public Runnable onChannelTerminated = null;
 
@@ -62,7 +62,7 @@ public class MessengerClient implements MessengerTarget {
 
                     if (response != null && response.Succeed && response.Data != null) {
 
-                        Action.One<MessengerPackage> callback = onPackageReceived;
+                        Action1<MessengerPackage> callback = onPackageReceived;
                         if (callback != null) for (MessengerPackage one : response.Data) try { callback.run(one); } catch (Exception e) { }
 
                         Thread.sleep(Math.max(1, client.interval));
@@ -110,7 +110,7 @@ public class MessengerClient implements MessengerTarget {
 
         final MessengerClient client = this;
 
-        return http.post(_server + "/register", request).<Boolean>then(new Function.One<http.Response, Boolean>() {
+        return http.post(_server + "/register", request).<Boolean>then(new Function1<http.Response, Boolean>() {
             @Override
             public Boolean run(http.Response data) {
 
@@ -164,7 +164,7 @@ public class MessengerClient implements MessengerTarget {
         request.Type = type;
         request.Data = data;
 
-        return http.post(_server + "/" + receiver, request).then(new Function.One<http.Response, Boolean>() {
+        return http.post(_server + "/" + receiver, request).then(new Function1<http.Response, Boolean>() {
             @Override
             public Boolean run(http.Response httpResponse) {
 
@@ -189,7 +189,7 @@ public class MessengerClient implements MessengerTarget {
         request.Type = name;
         request.Data = data;
 
-        return http.post(_server + "/" + receiver, request).then(new Function.One<http.Response, Boolean>() {
+        return http.post(_server + "/" + receiver, request).then(new Function1<http.Response, Boolean>() {
             @Override
             public Boolean run(http.Response httpResponse) {
 
@@ -214,7 +214,7 @@ public class MessengerClient implements MessengerTarget {
         request.Type = name;
         request.Data = null;
 
-        return http.post(_server + "/" + receiver, request).then(new Function.One<http.Response, Boolean>() {
+        return http.post(_server + "/" + receiver, request).then(new Function1<http.Response, Boolean>() {
             @Override
             public Boolean run(http.Response httpResponse) {
 
@@ -230,7 +230,7 @@ public class MessengerClient implements MessengerTarget {
 
     public Promise<MessengerChannel[]> getChannels() {
 
-        return http.get(_server + "/channels").then(new Function.One<http.Response, MessengerChannel[]>() {
+        return http.get(_server + "/channels").then(new Function1<http.Response, MessengerChannel[]>() {
             @Override
             public MessengerChannel[] run(http.Response httpResponse) {
                 ChannelsResponse response =  httpResponse == null ? null : httpResponse.getObject(new ChannelsResponse()).getResult();
@@ -252,7 +252,7 @@ public class MessengerClient implements MessengerTarget {
         channel = new MessengerChannel();
         channel.PushKey = key;
 
-        return http.post(_server + "/resources", channel).<String[]>then(new Function.One<http.Response, String[]>() {
+        return http.post(_server + "/resources", channel).<String[]>then(new Function1<http.Response, String[]>() {
             @Override
             public String[] run(http.Response httpResponse) {
                 ResourceNamesResponse response = httpResponse == null ? null : httpResponse.getObject(new ResourceNamesResponse()).getResult();
@@ -271,7 +271,7 @@ public class MessengerClient implements MessengerTarget {
         channel.PushKey = key;
         channel.PullKey = name;
 
-        return http.post(_server + "/resources", channel).<MessengerPackage>then(new Function.One<http.Response, MessengerPackage>() {
+        return http.post(_server + "/resources", channel).<MessengerPackage>then(new Function1<http.Response, MessengerPackage>() {
             @Override
             public MessengerPackage run(http.Response httpResponse) {
                 PullResponse response = httpResponse == null ? null : httpResponse.getObject(new PullResponse()).getResult();

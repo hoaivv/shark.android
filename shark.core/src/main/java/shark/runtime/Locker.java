@@ -3,6 +3,8 @@ package shark.runtime;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import shark.delegates.Action;
+import shark.delegates.Function;
 import shark.utils.Log;
 
 public final class Locker {

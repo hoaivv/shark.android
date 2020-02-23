@@ -2,7 +2,9 @@ package shark.runtime;
 
 import java.util.HashMap;
 
+import shark.delegates.Function;
 import shark.io.File;
+import shark.runtime.events.ActionEvent;
 
 public class CacheEntryOperator<TIndex, TData> {
 

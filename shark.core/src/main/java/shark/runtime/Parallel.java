@@ -1,5 +1,7 @@
 package shark.runtime;
 
+import shark.delegates.Action1;
+
 public final class Parallel {
 
     private static ParallelWorker _worker = new ParallelWorker();
@@ -84,7 +86,7 @@ public final class Parallel {
         }, action, false);
     }
 
-    public static void loop(int fromInclusive, int toExclusive, final Action.One<Integer> body) throws InterruptedException {
+    public static void loop(int fromInclusive, int toExclusive, final Action1<Integer> body) throws InterruptedException {
 
         final ParallelLoopCounter counter = new ParallelLoopCounter();
 
@@ -110,7 +112,7 @@ public final class Parallel {
         while (!counter.isCompleted()) Thread.currentThread().join(Workers.getTaskSleepInterval());
     }
 
-    public static <T> void each(Iterable<T> collection, final Action.One<T> body) throws InterruptedException {
+    public static <T> void each(Iterable<T> collection, final Action1<T> body) throws InterruptedException {
 
         final ParallelLoopCounter counter = new ParallelLoopCounter();
 

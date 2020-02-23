@@ -1,5 +1,7 @@
 package shark.runtime;
 
+import shark.delegates.Action2;
+
 /**
  * Defines an object which provides information of an asynchronous operation managed by
  * Shark Framework
@@ -49,7 +51,7 @@ public interface IAsyncOperationState {
      * @param callback callback to be registered.
      * @param state object to be passed to the callback when it is invoked.
      */
-    void registerCallback(Action.Two<IAsyncOperationState, Object> callback, Object state);
+    void registerCallback(Action2<IAsyncOperationState, Object> callback, Object state);
 
     /**
      * Registers a callback to be invoked then the operation is completed
@@ -58,5 +60,5 @@ public interface IAsyncOperationState {
      * @param onFailure value to be passed to the callback in case the operation is failed
      * @param <T> type of expected response from the operation
      */
-    <T> void registerCallback(Action.Two<T, Object> callback, Object state, T onFailure);
+    <T> void registerCallback(Action2<T, Object> callback, Object state, T onFailure);
 }
