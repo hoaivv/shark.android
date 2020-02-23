@@ -73,7 +73,7 @@ public class Main extends Activity {
 
         final Context context = this;
 
-        Framework.get
+        Action
 
         new Thread(new Runnable() {
             @Override
