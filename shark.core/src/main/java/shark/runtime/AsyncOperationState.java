@@ -6,10 +6,10 @@ public abstract class AsyncOperationState implements IAsyncOperationState {
 
     class _CallbackInfo {
 
-        AsyncOperationCallback callback;
+        Action.Two<IAsyncOperationState, Object> callback;
         Object state;
 
-        public AsyncOperationCallback getCallback(){
+        public Action.Two<IAsyncOperationState, Object> getCallback(){
             return callback;
         }
 
@@ -17,7 +17,7 @@ public abstract class AsyncOperationState implements IAsyncOperationState {
             return state;
         }
 
-        public _CallbackInfo(AsyncOperationCallback callback, Object state)
+        public _CallbackInfo(Action.Two<IAsyncOperationState, Object> callback, Object state)
         {
             this.callback = callback;
             this.state = state;
@@ -26,7 +26,7 @@ public abstract class AsyncOperationState implements IAsyncOperationState {
 
     class _CallbackConverterInfo<T> {
 
-        SimplifiedAsyncOperationCallback<T> callback;
+        Action.Two<T, Object> callback;
         T onFailure;
         Object state;
 
@@ -38,11 +38,11 @@ public abstract class AsyncOperationState implements IAsyncOperationState {
             return onFailure;
         }
 
-        public SimplifiedAsyncOperationCallback<T> getCallback(){
+        public Action.Two<T, Object> getCallback(){
             return callback;
         }
 
-        public _CallbackConverterInfo(SimplifiedAsyncOperationCallback<T> callback, T onFailure, Object state){
+        public _CallbackConverterInfo(Action.Two<T, Object> callback, T onFailure, Object state){
             this.callback = callback;
             this.onFailure = onFailure;
             this.state = state;
@@ -82,13 +82,13 @@ public abstract class AsyncOperationState implements IAsyncOperationState {
         return response;
     }
 
-    public final void registerCallback(AsyncOperationCallback callback, Object state){
+    public final void registerCallback(Action.Two<IAsyncOperationState, Object> callback, Object state){
 
         if (callback == null) throw  new IllegalArgumentException("callback");
 
         synchronized (_callbackInfos) {
             if (isCompleted) {
-                try { callback.accept(this, state); } catch (Exception e) { }
+                try { callback.run(this, state); } catch (Exception e) { }
             }
             else {
                 _callbackInfos.add(new _CallbackInfo(callback, state));
@@ -96,21 +96,21 @@ public abstract class AsyncOperationState implements IAsyncOperationState {
         }
     }
 
-    public final <T> void registerCallback(SimplifiedAsyncOperationCallback<T> callback, Object state, T onFailure) {
+    public final <T> void registerCallback(Action.Two<T, Object> callback, Object state, T onFailure) {
 
         if (callback == null) throw  new IllegalArgumentException("callback");
 
-        registerCallback(new AsyncOperationCallback() {
+        registerCallback(new Action.Two<IAsyncOperationState, Object>() {
             @Override
-            public void accept(IAsyncOperationState result, Object state) {
+            public void run(IAsyncOperationState result, Object state) {
 
                 _CallbackConverterInfo<T> info = (_CallbackConverterInfo<T>)state;
 
                 try {
-                    info.getCallback().accept(result.isSucceed() ? (T)result.getResponse() : info.getOnFailure(), info.getState());
+                    info.getCallback().run(result.isSucceed() ? (T)result.getResponse() : info.getOnFailure(), info.getState());
                 }
                 catch (ClassCastException e) {
-                    info.getCallback().accept(info.getOnFailure(), info.getState());
+                    info.getCallback().run(info.getOnFailure(), info.getState());
                 }
             }
         }, new _CallbackConverterInfo<T>(callback, onFailure, state));
@@ -130,7 +130,7 @@ public abstract class AsyncOperationState implements IAsyncOperationState {
 
             while (!_callbackInfos.isEmpty()){
                 _CallbackInfo info = _callbackInfos.pop();
-                try { info.getCallback().accept(this, info.getState()); } catch (Exception e) {}
+                try { info.getCallback().run(this, info.getState()); } catch (Exception e) {}
             }
         }
     }
@@ -150,7 +150,7 @@ public abstract class AsyncOperationState implements IAsyncOperationState {
             while (!_callbackInfos.isEmpty()) {
                 _CallbackInfo info = _callbackInfos.pop();
                 try {
-                    info.getCallback().accept(this, info.getState());
+                    info.getCallback().run(this, info.getState());
                 } catch (Exception e) {
                 }
             }

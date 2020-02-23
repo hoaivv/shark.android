@@ -36,7 +36,7 @@ public class Main extends Activity {
                 switch (eventArgs.getType()) {
                     case Error: Log.e(eventArgs.getOwner().getName(), eventArgs.getTrace() + ": " + eventArgs.getMessage()); break;
                     case Warning: Log.w(eventArgs.getOwner().getName(), eventArgs.getTrace() + ": " + eventArgs.getMessage()); break;
-                    case information: Log.i(eventArgs.getOwner().getName(), eventArgs.getTrace() + ": " + eventArgs.getMessage()); break;
+                    case Information: Log.i(eventArgs.getOwner().getName(), eventArgs.getTrace() + ": " + eventArgs.getMessage()); break;
                 }
             }
         });
@@ -72,8 +72,6 @@ public class Main extends Activity {
         Framework.writeLogsToFiles = true;
 
         final Context context = this;
-
-        Action
 
         new Thread(new Runnable() {
             @Override
