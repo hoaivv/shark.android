@@ -7,6 +7,9 @@ import shark.Framework;
 import shark.components.IAutomation;
 import shark.utils.Log;
 
+/**
+ * Shark Automation Manager
+ */
 public final class Automations {
 
     private Automations(){
@@ -21,6 +24,10 @@ public final class Automations {
         }
     }
 
+    /**
+     * Gets all running automation
+     * @return all running automation
+     */
     public static IAutomation[] getRunningAutomations() {
 
         ArrayList<IAutomation> results = new ArrayList<>();
@@ -29,12 +36,20 @@ public final class Automations {
         return results.toArray(new IAutomation[0]);
     }
 
+    /**
+     * Indicates whether at least one automation is running or not
+     * @return true if at least one automation is runningn; otherwise false
+     */
     public static boolean hasRunningAutomation() {
 
         for (IAutomation one : getAll()) if (one.isRunning()) return  true;
         return false;
     }
 
+    /**
+     * Gets number of running automation
+     * @return number of running automation
+     */
     public static int getRunningAutomationCount() {
 
         int count = 0;
@@ -42,6 +57,11 @@ public final class Automations {
         return count;
     }
 
+    /**
+     * Indicates whether the specified automation is registered or not
+     * @param automation automation to be checked
+     * @return true if the automation is registered; otherwise false
+     */
     public static boolean isRegistered(IAutomation automation) {
 
         if (automation == null) return false;
@@ -53,6 +73,11 @@ public final class Automations {
         }
     }
 
+    /**
+     * Indicates whether the specified worker is registered as an automation or not
+     * @param worker worker to be checked
+     * @return true if the worker is registered; otherwise false
+     */
     public static boolean isRegistered(Worker worker) {
 
         if (worker == null || !IAutomation.class.isAssignableFrom(worker.getClass())) return false;
@@ -65,6 +90,11 @@ public final class Automations {
         }
     }
 
+    /**
+     * Gets a registered automation of a specified type
+     * @param cls type of automation
+     * @return a registered automation of the specified type if it is registered; otherwise null
+     */
     public static IAutomation get(final Class<? extends IAutomation> cls) {
 
         synchronized (registeredAutomation) {
@@ -72,6 +102,10 @@ public final class Automations {
         }
     }
 
+    /**
+     * Registers an automation
+     * @param automation automation to be registered
+     */
     public static void register(IAutomation automation) {
 
         if (automation == null) {
