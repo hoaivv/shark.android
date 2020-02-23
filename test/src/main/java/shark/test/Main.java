@@ -34,8 +34,8 @@ public class Main extends Activity {
             public void run(LogData eventArgs) {
 
                 switch (eventArgs.getType()) {
-                    case error: Log.e(eventArgs.getOwner().getName(), eventArgs.getTrace() + ": " + eventArgs.getMessage()); break;
-                    case warning: Log.w(eventArgs.getOwner().getName(), eventArgs.getTrace() + ": " + eventArgs.getMessage()); break;
+                    case Error: Log.e(eventArgs.getOwner().getName(), eventArgs.getTrace() + ": " + eventArgs.getMessage()); break;
+                    case Warning: Log.w(eventArgs.getOwner().getName(), eventArgs.getTrace() + ": " + eventArgs.getMessage()); break;
                     case information: Log.i(eventArgs.getOwner().getName(), eventArgs.getTrace() + ": " + eventArgs.getMessage()); break;
                 }
             }

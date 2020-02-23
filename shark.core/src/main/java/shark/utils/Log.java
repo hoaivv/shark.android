@@ -4,7 +4,11 @@ import java.util.LinkedList;
 
 import shark.Framework;
 
+/**
+ * Provides easy access to Shark Framework Logging System
+ */
 public final class Log {
+
     private Log(){
     }
 
@@ -53,6 +57,14 @@ public final class Log {
         }
     };
 
+    /**
+     * Writes a log via Shark Framework Logging System
+     * @param owner owner of the log
+     * @param type type of the log
+     * @param skipTrace number of stack trace to be skipped when generating trace information of the log.
+     *                  This value will have no effects if {@link Framework#traceLogCaller} set to false
+     * @param messages messages of the log
+     */
     public static void write(Class<?> owner, LogType type, int skipTrace, String... messages) {
 
         if (!Framework.log) return;
@@ -85,34 +97,83 @@ public final class Log {
         }
     }
 
+    /**
+     * Writes a log via Shark Framework Logging System
+     * @param owner owner of the log
+     * @param type type of the log
+     *                  This value will have no effects if {@link Framework#traceLogCaller} set to false
+     * @param messages messages of the log
+     */
     public static void write(Class<?> owner, LogType type, String... messages){
         write(owner, type, 1, messages);
     }
 
+    /**
+     * Writes an information log via Shark Framework Loggin System
+     * @param owner owner of the log
+     * @param messages messages of the log
+     */
     public static void information(Class<?> owner, String... messages) {
-        write(owner, LogType.information, 1, messages);
+        write(owner, LogType.Information, 1, messages);
     }
 
+    /**
+     * Writes an information log via Shark Framework Loggin System
+     * @param owner owner of the log
+     * @param skipTrace number of stack trace to be skipped when generating trace information of the log.
+     *                  This value will have no effects if {@link Framework#traceLogCaller} set to false
+     * @param messages messages of the log
+     */
     public static void information(Class<?> owner, int skipTrace, String... messages) {
-        write(owner, LogType.information, skipTrace + 1, messages);
+        write(owner, LogType.Information, skipTrace + 1, messages);
     }
 
+    /**
+     * Writes a warning log via Shark Framework Loggin System
+     * @param owner owner of the log
+     * @param messages messages of the log
+     */
     public static void warning(Class<?> owner, String... messages) {
-        write(owner, LogType.warning, 1, messages);
+        write(owner, LogType.Warning, 1, messages);
     }
 
+    /**
+     * Writes a warning log via Shark Framework Loggin System
+     * @param owner owner of the log
+     * @param skipTrace number of stack trace to be skipped when generating trace information of the log.
+     *                  This value will have no effects if {@link Framework#traceLogCaller} set to false
+     * @param messages messages of the log
+     */
     public static void warning(Class<?> owner, int skipTrace, String... messages) {
-        write(owner, LogType.warning, skipTrace + 1, messages);
+        write(owner, LogType.Warning, skipTrace + 1, messages);
     }
 
+    /**
+     * Writes an error log via Shark Framework Loggin System
+     * @param owner owner of the log
+     * @param messages messages of the log
+     */
     public static void error(Class<?> owner, String... messages) {
-        write(owner, LogType.error, 1, messages);
+        write(owner, LogType.Error, 1, messages);
     }
 
+    /**
+     * Writes an error log via Shark Framework Loggin System
+     * @param owner owner of the log
+     * @param skipTrace number of stack trace to be skipped when generating trace information of the log.
+     *                  This value will have no effects if {@link Framework#traceLogCaller} set to false
+     * @param messages messages of the log
+     */
     public static void error(Class<?> owner, int skipTrace, String... messages) {
-        write(owner, LogType.error, skipTrace + 1, messages);
+        write(owner, LogType.Error, skipTrace + 1, messages);
     }
 
+    /**
+     * Represents elements of an array as a string, each line of which represent a collection element.
+     * @param collection collection to be represented as a string
+     * @param <T> typeof the array
+     * @return A string represent the provided array
+     */
     public static <T> String stringify(T[] collection) {
 
         String result = "";
