@@ -1,1 +1,1 @@
-include ':shark.messenger', ':shark.runtime', ':test'
+include ':shark.messenger', ':shark.runtime', ':test', ':shark.core'
