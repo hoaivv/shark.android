@@ -14,6 +14,10 @@ import java.io.Reader;
 import java.net.URI;
 import java.util.ArrayList;
 
+/**
+ * Extends {@link java.io.File} and provides methods to make file read/write operation more
+ * convenient
+ */
 public class File extends java.io.File {
 
     public File(String pathname) {
@@ -28,10 +32,23 @@ public class File extends java.io.File {
         super(parent, child);
     }
 
+    public File(java.io.File parent, String child) {
+        super(parent, child);
+    }
+
     public File(URI uri) {
         super(uri);
     }
 
+    public File(java.io.File file) {
+        super(file.toURI());
+    }
+
+    /**
+     * Read all lines from the file
+     * @return a string array, each element of which is a line from the file
+     * @throws IOException throws if I/O error occurred during reading operation
+     */
     public String[] readAllLines() throws IOException {
 
         ArrayList<String> lines = new ArrayList<>();
@@ -54,6 +71,11 @@ public class File extends java.io.File {
         return lines.toArray(new String[0]);
     }
 
+    /**
+     * Reads all text from the file
+     * @return content of the file as a string
+     * @throws IOException throws if I/O error occurred during reading operation
+     */
     public String readAllText() throws IOException {
 
         Reader reader = null;
@@ -79,6 +101,12 @@ public class File extends java.io.File {
         return builder.toString();
     }
 
+    /**
+     * Reads all text from the file
+     * @param charsetName name of the charset used to decode file content
+     * @return content of the file as a string
+     * @throws IOException throws if I/O error occurred during reading operation
+     */
     public String readAllText(String charsetName) throws IOException {
 
         Reader reader = null;
@@ -104,6 +132,11 @@ public class File extends java.io.File {
         return builder.toString();
     }
 
+    /**
+     * Reads all bytes from the file
+     * @return content of the file as an byte array
+     * @throws IOException throws if I/O error occurred during reading operation
+     */
     public byte[] readAllBytes() throws IOException {
 
         FileInputStream reader = null;
@@ -132,6 +165,12 @@ public class File extends java.io.File {
         }
     }
 
+    /**
+     * Writes an array of bytes to the file. If the file exists it will be overwritten. If the file
+     * does not exist, it will be created.
+     * @param bytes bytes to be written to the file
+     * @throws IOException throws if I/O error occurred during writing operation
+     */
     public void writeAllBytes(byte[] bytes) throws IOException {
 
         OutputStream writer = null;
@@ -146,14 +185,32 @@ public class File extends java.io.File {
         }
     }
 
+    /**
+     * Write a string to the file. If the file exists it will be overwritten. If the file does not
+     * exist, it will be created.
+     * @param text string to be written to the file
+     * @throws IOException throws if I/O error occurred during writing operation
+     */
     public void writeAllText(String text) throws IOException {
         writeAllBytes(text.getBytes());
     }
 
+    /**
+     * Write a string to the file. If the file exists it will be overwritten. If the file does not
+     * exist, it will be created.
+     * @param text string to be written to the file
+     * @param charsetName name of the charset to be used to encode the string
+     * @throws IOException throws if I/O error occurred during writing operation
+     */
     public void writeAllText(String text, String charsetName) throws IOException {
         writeAllBytes(text.getBytes(charsetName));
     }
 
+    /**
+     * Appends a byte array to the end of the file. If the file does not exists it will be created.
+     * @param bytes an array of bytes to be appended at the end of the file.
+     * @throws IOException throws if I/O error occurred during writing operation
+     */
     public void appendAllBytes(byte[] bytes) throws IOException {
 
         OutputStream writer = null;
@@ -168,14 +225,31 @@ public class File extends java.io.File {
         }
     }
 
+    /**
+     * Appends a string to the end of the file. If the file does not exists it will be created.
+     * @param text a string to be appended at the end of the file.
+     * @throws IOException throws if I/O error occurred during writing operation
+     */
     public void appendAllText(String text) throws IOException {
         appendAllBytes(text.getBytes());
     }
 
+    /**
+     * Appends a string to the end of the file. If the file does not exists it will be created.
+     * @param text a string to be appended at the end of the file.
+     * @param charsetName name of the charset to be used to encode the string
+     * @throws IOException throws if I/O error occurred during writing operation
+     */
     public void appendAllText(String text, String charsetName) throws IOException {
         appendAllBytes(text.getBytes(charsetName));
     }
 
+    /**
+     * Deletes a file or directory
+     * @param recursive indicates whether the all sub directories and files should be deleted
+     *                  or not. This parameter has no effects when deleting a file.
+     * @return true if succeed; otherwise false
+     */
     public boolean delete(boolean recursive) {
 
         if (!recursive) return delete();

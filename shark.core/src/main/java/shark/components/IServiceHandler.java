@@ -1,5 +1,6 @@
 package shark.components;
 
+
 public interface IServiceHandler {
 
     int computeIdentifier(IServiceRequestInfo request) throws ServiceException;
