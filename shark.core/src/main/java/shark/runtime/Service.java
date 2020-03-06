@@ -121,19 +121,15 @@ public final class Service {
 
             if (info.state.isSucceed() && wait > 0) {
                 if (info.sync) {
-                    Parallel.start(new Runnable() {
-                        @Override
-                        public void run() {
-                            try {
-                                Thread.currentThread().join(wait);
-                            }
-                            catch (InterruptedException e){
-                            }
-                            finally {
 
-                                synchronized (info.service._managedExecutionStates) {
-                                    info.service._managedExecutionStates.remove(info.requestIdentifier);
-                                }
+                    Parallel.start(() -> {
+                        try {
+                            Thread.currentThread().join(wait);
+                        } catch (InterruptedException e) {
+                        } finally {
+
+                            synchronized (info.service._managedExecutionStates) {
+                                info.service._managedExecutionStates.remove(info.requestIdentifier);
                             }
                         }
                     });
@@ -229,12 +225,7 @@ public final class Service {
                     result = _managedExecutionStates.get(id);
                 }
 
-                if (execute) Parallel.queue(new Task() {
-                    @Override
-                    public void run(Object state) {
-                        _executeTask((_ExecutionInfo)state);
-                    }
-                }, new _ExecutionInfo(this, request, requestId, result, false));
+                if (execute) Parallel.queue(state -> _executeTask((_ExecutionInfo)state), new _ExecutionInfo(this, request, requestId, result, false));
             }
         }
 

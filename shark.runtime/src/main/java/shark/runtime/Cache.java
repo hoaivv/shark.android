@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import shark.delegates.Action1;
-import shark.delegates.Function;
 import shark.io.Binary;
 import shark.io.File;
 import shark.runtime.serialization.Serializer;
@@ -128,95 +127,86 @@ public class Cache<TIndex, TData> {
                 }
             });
 
-            CacheController.onCommitChangesToStorage.add(_commitChangesToStorage);
-            CacheEntry._of(indexClass, dataClass).onEntryModified.add(_entryModified);
+            CacheController.onCommitChangesToStorage.add(() -> _commitChangesToStorage());
+            CacheEntry._of(indexClass, dataClass).onEntryModified.add(arg -> _entryModified(arg));
         } catch (InterruptedException e) {
         }
     }
 
+    private void _entryModified(CacheEntryModifiedEventArgs<TIndex, TData> arg) {
 
-    private Action1<CacheEntryModifiedEventArgs<TIndex, TData>> _entryModified = new Action1<CacheEntryModifiedEventArgs<TIndex, TData>>() {
-        @Override
-        public void run(CacheEntryModifiedEventArgs<TIndex, TData> arg) {
+        try {
 
-            try {
+            switch (arg.getAction()) {
+                case Create:
 
-                switch (arg.getAction()) {
-                    case Create:
+                    synchronized (entries) {
+                        switch (mode) {
+                            case Static:
+                                entries.put(arg.getEntry().getIndex(), arg.getEntry());
+                                break;
 
-                        synchronized (entries) {
-                            switch (mode) {
-                                case Static:
-                                    entries.put(arg.getEntry().getIndex(), arg.getEntry());
-                                    break;
-
-                                default:
-                                    entries.put(arg.getEntry().getIndex(), new WeakReference<CacheEntry<TIndex, TData>>(arg.getEntry()));
-                                    break;
-                            }
-
-                            entryFileIndexes.put(arg.getEntry().getIndex(), arg.getEntry().getFileIndex());
-                            unsettled.remove(arg.getEntry().getIndex());
+                            default:
+                                entries.put(arg.getEntry().getIndex(), new WeakReference<CacheEntry<TIndex, TData>>(arg.getEntry()));
+                                break;
                         }
 
-                        break;
+                        entryFileIndexes.put(arg.getEntry().getIndex(), arg.getEntry().getFileIndex());
+                        unsettled.remove(arg.getEntry().getIndex());
+                    }
 
-                    case Delete:
+                    break;
 
-                        synchronized (entries) {
-                            entries.remove(arg.getEntry().getIndex());
-                            entryFileIndexes.remove(arg.getEntry().getIndex());
-                        }
+                case Delete:
 
-                        break;
-                }
+                    synchronized (entries) {
+                        entries.remove(arg.getEntry().getIndex());
+                        entryFileIndexes.remove(arg.getEntry().getIndex());
+                    }
+
+                    break;
             }
-            catch (IOException e) {
-            }
+        } catch (IOException e) {
         }
-    };
+    }
 
     private Long storedLastModified = null;
 
-    private Function<Boolean> _commitChangesToStorage = new Function<Boolean>() {
-        @Override
-        public Boolean run() {
+    private boolean _commitChangesToStorage() {
 
-            Long current = lastEntryModifiedUtc;
+        Long current = lastEntryModifiedUtc;
 
-            if (storedLastModified != current) {
-                try {
+        if (storedLastModified != current) {
+            try {
 
-                    File dir = getCacheDirectory();
-                    if (!dir.exists() && !dir.mkdirs()) return false;
+                File dir = getCacheDirectory();
+                if (!dir.exists() && !dir.mkdirs()) return false;
 
-                    File file = new File(dir + "/.info");
+                File file = new File(dir + "/.info");
 
-                    if (current != null) {
+                if (current != null) {
 
-                        FileOutputStream stream = null;
-                        try {
-                            stream = new FileOutputStream(file);
-                            Binary.write(stream, (long) current);
-                        } finally {
-                            if (stream != null) stream.close();
-                        }
-                    } else {
-                        if (file.exists() && file.isFile()) file.delete();
+                    FileOutputStream stream = null;
+                    try {
+                        stream = new FileOutputStream(file);
+                        Binary.write(stream, (long) current);
+                    } finally {
+                        if (stream != null) stream.close();
                     }
-
-                    storedLastModified = current;
-
-                    return true;
+                } else {
+                    if (file.exists() && file.isFile()) file.delete();
                 }
-                catch (Exception e) {
-                    return false;
-                }
+
+                storedLastModified = current;
+
+                return true;
+            } catch (Exception e) {
+                return false;
             }
-
-            return true;
         }
-    };
+
+        return true;
+    }
 
     void _removeUnsettled(TIndex index) {
         synchronized (entries) {

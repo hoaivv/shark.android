@@ -245,7 +245,7 @@ public class File extends java.io.File {
     }
 
     /**
-     * Deletes a file or directory
+     * Deletes the file/directory
      * @param recursive indicates whether the all sub directories and files should be deleted
      *                  or not. This parameter has no effects when deleting a file.
      * @return true if succeed; otherwise false

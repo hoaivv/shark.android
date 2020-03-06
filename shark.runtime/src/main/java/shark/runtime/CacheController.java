@@ -5,7 +5,6 @@ import java.io.FileOutputStream;
 import java.util.HashMap;
 
 import shark.Framework;
-import shark.delegates.Function;
 import shark.io.File;
 import shark.runtime.events.ActionEvent;
 import shark.runtime.events.FunctionTrigger;
@@ -23,59 +22,50 @@ final class CacheController {
     private static Serializer _defaultSerializer = new JsonSerializer();
 
     private static Long lastCleanupStamp = null;
+    private static int _lastCacheCount = 0;
 
     static FunctionTrigger<Boolean> onCommitChangesToStorage = null;
 
-    private static Function<Boolean> _commitChangesToStorage = new Function<Boolean>() {
-        @Override
-        public Boolean run() {
-            synchronized (_caches) {
+    private static boolean _commitChangesToStorage() {
+        synchronized (_caches) {
+            try {
+
+                if (_caches.size() == _lastCacheCount) return true;
+
+                File file = new File(getCacheDirectory() + "/.allocation");
+
+                if (file.exists() && (!file.isFile() || !file.delete())) return false;
+
+                FileOutputStream output = null;
+
                 try {
-
-                    if (_caches.size() == _lastCacheCount) return true;
-
-                    File file = new File(getCacheDirectory() + "/.allocation");
-
-                    if (file.exists() && (!file.isFile() || !file.delete())) return false;
-
-                    FileOutputStream output = null;
-
-                    try {
-                        output = new FileOutputStream(file);
-                        _defaultSerializer.serialize(output, _caches);
-                    }
-                    finally {
-                        if (output != null) output.close();
-                    }
-
-                    _lastCacheCount = _caches.size();
-                    return true;
+                    output = new FileOutputStream(file);
+                    _defaultSerializer.serialize(output, _caches);
+                } finally {
+                    if (output != null) output.close();
                 }
-                catch (Exception e) {
-                    return false;
-                }
+
+                _lastCacheCount = _caches.size();
+                return true;
+            } catch (Exception e) {
+                return false;
             }
         }
     };
 
-    private static Task _storingTask = new Task() {
-        @Override
-        public void run(Object state) {
-            try {
+    private static void _storingTask() {
+        try {
 
-                while (true) {
+            while (true) {
 
-                    try {
-                        setPersistent(onCommitChangesToStorage.invoke(signature, true));
-                    }
-                    catch (IllegalAccessException e) {
-                    }
-
-                    Thread.currentThread().join(1000);
+                try {
+                    setPersistent(onCommitChangesToStorage.invoke(signature, true));
+                } catch (IllegalAccessException e) {
                 }
+
+                Thread.currentThread().join(1000);
             }
-            catch (InterruptedException e) {
-            }
+        } catch (InterruptedException e) {
         }
     };
 
@@ -127,17 +117,15 @@ final class CacheController {
             }
         }
 
-        Parallel.start(_storingTask, null, false);
-
         onCommitChangesToStorage = new FunctionTrigger<>(this);
-        onCommitChangesToStorage.add(_commitChangesToStorage);
+        onCommitChangesToStorage.add(() -> _commitChangesToStorage());
+
+        Parallel.start(state -> _storingTask(), null, false);
     }
 
     private static CacheController signature = new CacheController();
 
     static ActionEvent<Long> onCleanup = new ActionEvent<>(signature);
-
-    private static int _lastCacheCount = 0;
 
     public static File getCacheDirectory() throws InterruptedException {
         return new File(Framework.getDataDirectory() + "/cache");

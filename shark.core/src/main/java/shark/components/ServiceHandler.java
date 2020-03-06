@@ -13,7 +13,7 @@ public abstract class ServiceHandler<TData, TReturn> implements IServiceHandler 
 
     public Object process(IServiceRequestInfo request) throws ServiceException {
 
-        if (request == null) throw new InvalidServiceDataException(ServiceDataTypes.requestData, "Invalid request");
+        if (request == null) throw new InvalidServiceDataException(ServiceDataTypes.RequestData, "Invalid request");
 
         ServiceRequestInfo<TData> converted;
 
@@ -21,7 +21,7 @@ public abstract class ServiceHandler<TData, TReturn> implements IServiceHandler 
              converted = (ServiceRequestInfo<TData>)request;
         }
         catch (ClassCastException e) {
-            throw new InvalidServiceDataException(ServiceDataTypes.requestData, "invalid request");
+            throw new InvalidServiceDataException(ServiceDataTypes.RequestData, "invalid request");
         }
 
         try {
@@ -34,7 +34,7 @@ public abstract class ServiceHandler<TData, TReturn> implements IServiceHandler 
 
     public int computeIdentifier(IServiceRequestInfo request) throws ServiceException {
 
-        if (request == null) throw new InvalidServiceDataException(ServiceDataTypes.requestData, "Invalid request");
+        if (request == null) throw new InvalidServiceDataException(ServiceDataTypes.RequestData, "Invalid request");
 
         ServiceRequestInfo<TData> converted;
 
@@ -42,7 +42,7 @@ public abstract class ServiceHandler<TData, TReturn> implements IServiceHandler 
             converted = (ServiceRequestInfo<TData>)request;
         }
         catch (ClassCastException e) {
-            throw new InvalidServiceDataException(ServiceDataTypes.requestData, "invalid request");
+            throw new InvalidServiceDataException(ServiceDataTypes.RequestData, "invalid request");
         }
 
         try {

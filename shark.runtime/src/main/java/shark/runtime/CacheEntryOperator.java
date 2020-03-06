@@ -2,7 +2,6 @@ package shark.runtime;
 
 import java.util.HashMap;
 
-import shark.delegates.Function;
 import shark.io.File;
 import shark.runtime.events.ActionEvent;
 
@@ -23,61 +22,55 @@ public class CacheEntryOperator<TIndex, TData> {
         dataClass = data;
         _sample = sample;
 
-        CacheController.onCommitChangesToStorage.add(_commitChangesToStorage);
+        CacheController.onCommitChangesToStorage.add(() -> _commitChangesToStorage());
     }
 
-    private Function<Boolean> _commitChangesToStorage = new Function<Boolean>() {
-        @Override
-        public Boolean run() {
-            Long[] indexes;
+    private boolean _commitChangesToStorage() {
+        Long[] indexes;
+        synchronized (pendingEntries) {
+            indexes = pendingEntries.keySet().toArray(new Long[0]);
+        }
+
+        for (long index : indexes) {
+
+            CacheEntry<TIndex, TData> entry;
             synchronized (pendingEntries) {
-                indexes = pendingEntries.keySet().toArray(new Long[0]);
+                entry = pendingEntries.get(index);
             }
 
-            for (long index : indexes) {
+            if (entry == null) {
+                try {
+                    File file = _getFile(index);
 
-                CacheEntry<TIndex, TData> entry;
-                synchronized (pendingEntries) {
-                    entry = pendingEntries.get(index);
+                    if (file.exists() && file.isFile() && !file.delete()) break;
+                    synchronized (pendingEntries) {
+                        if (pendingEntries.get(index) == null) pendingEntries.remove(index);
+                    }
+                } catch (Exception e) {
+                    break;
                 }
+            } else {
+                try {
+                    long savingVersion = entry.version;
 
-                if (entry == null) {
-                    try {
-                        File file = _getFile(index);
-
-                        if (file.exists() && file.isFile() && !file.delete()) break;
+                    if (entry.save()) {
                         synchronized (pendingEntries) {
-                            if (pendingEntries.get(index) == null) pendingEntries.remove(index);
+                            if (pendingEntries.get(index) == entry && entry.version == savingVersion)
+                                pendingEntries.remove(index);
                         }
-                    }
-                    catch (Exception e) {
+                    } else {
                         break;
                     }
+                } catch (Exception e) {
+                    break;
                 }
-                else {
-                    try {
-                        long savingVersion = entry.version;
-
-                        if (entry.save()) {
-                            synchronized (pendingEntries) {
-                                if (pendingEntries.get(index) == entry && entry.version == savingVersion) pendingEntries.remove(index);
-                            }
-                        }
-                        else {
-                            break;
-                        }
-                    }
-                    catch (Exception e) {
-                        break;
-                    }
-                }
-            }
-
-            synchronized (pendingEntries){
-                return pendingEntries.size() < 1;
             }
         }
-    };
+
+        synchronized (pendingEntries) {
+            return pendingEntries.size() < 1;
+        }
+    }
 
     CacheEntry<TIndex, TData> _get(long fileIndex) {
 
