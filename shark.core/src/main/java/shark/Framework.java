@@ -1,25 +1,22 @@
 package shark;
 
 import android.content.Context;
+import android.os.Looper;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.HashSet;
-import java.util.List;
 
-import dalvik.system.BaseDexClassLoader;
 import shark.components.IAutomation;
+import shark.components.ISharkComponent;
 import shark.components.ServiceHandler;
 import shark.io.File;
-import shark.runtime.events.ActionEvent;
-import shark.runtime.events.ActionTrigger;
 import shark.runtime.Automations;
 import shark.runtime.Services;
 import shark.runtime.Worker;
 import shark.runtime.Workers;
+import shark.runtime.events.ActionEvent;
+import shark.runtime.events.ActionTrigger;
 import shark.utils.Log;
 import shark.utils.LogData;
 
@@ -110,184 +107,93 @@ public final class Framework {
     }
 
     /**
-     * Starts Shark.Framework and loading Shark's components from packages
+     * Starts Shark.Framework and loading Shark's components. If this method is invoked on the main
+     * thread it will run asynchronously, otherwise it will run synchronously.
      * @param context context provided at runtime by android
-     * @param loadingPackages specifies the framework to only load Shark's components from the specified packages.
-     *                        If this parameter is not provided the framework will load components from all packages
+     * @param components component to be loaded before starting the framework
      */
-    public static void start(Context context, String... loadingPackages) {
+    public static void start(Context context, ISharkComponent... components) {
 
-        synchronized (signature) {
-            if (isRunning() && initialised) return;
+        Runnable commit = () -> {
 
-            if (debug && log) Log.information(Framework.class, "Starting Shark");
+            synchronized (signature) {
+                if (isRunning() && initialised) return;
 
-            if (!initialised) {
+                if (debug && log) Log.information(Framework.class, "Starting Shark");
 
-                initialised = true;
+                if (!initialised) {
 
-                 dataDirectory = context.getFilesDir().toString();
+                    initialised = true;
 
-                 HashSet<String> prefixes = new HashSet<>();
-                 for(String prefix : loadingPackages) prefixes.add(prefix);
+                    dataDirectory = context.getFilesDir().toString();
 
-                if (log && debug)
-                    Log.information(Framework.class, "Registering Shark components");
+                    if (components.length > 0 && log && debug)
+                        Log.information(Framework.class, "Registering Shark components");
 
-                List<Class<?>> classes = new ArrayList<>();
+                    for (ISharkComponent component : components) {
 
-                try {
+                        if (component == null) continue;
 
-                    ClassLoader loader = Framework.class.getClassLoader();
-
-                    Field pathListField = BaseDexClassLoader.class.getDeclaredField("pathList");
-                    pathListField.setAccessible(true);
-                    Object pathList = pathListField.get(loader);
-
-                    Field dexElementField = pathList.getClass().getDeclaredField("dexElements");
-                    dexElementField.setAccessible(true);
-                    Object[] dexElements = (Object[]) dexElementField.get(pathList);
-
-                    Field pathField = dexElements.length > 0 ? dexElements[0].getClass().getDeclaredField("dexFile") : null;
-                    pathField.setAccessible(true);
-
-                    for (Object dexElement : dexElements) {
-
-                        Object dexFile = pathField.get(dexElement);
-
-                        if (dexFile != null) {
-
-                            Enumeration<String> entries = (Enumeration<String>)dexFile.getClass().getMethod("entries").invoke(dexFile);
-
-                            while (entries.hasMoreElements()) {
-
-                                String name = entries.nextElement();
-                                try {
-
-                                    boolean pass = prefixes.size() == 0;
-
-                                    if (!pass) {
-
-                                        String[] packages = name.split("\\.");
-                                        pass = prefixes.contains(packages[0]);
-
-                                        if (!pass) {
-
-                                            String current = packages[0];
-                                            for (int i = 1; i < packages.length - 1; i++) {
-                                                current += "." + packages[i];
-                                                pass = prefixes.contains(current);
-                                                if (pass) break;
-                                            }
-                                        }
-                                    }
-
-                                    if (pass) {
-
-                                        classes.add(Class.forName(name));
-                                        if (debug)
-                                            Log.information(Framework.class, name + " loaded");
-                                    }
-                                }
-                                catch (Exception e) {
-
-                                    Log.error(Framework.class,
-                                            "Error detected while loading " + name ,
-                                            "Error:" + e.getClass(),
-                                            "Message: " + e.getMessage(),
-                                            Log.stringify(e.getStackTrace()));
-                                }
-                            }
+                        if (ServiceHandler.class.isAssignableFrom(component.getClass())) {
+                            Services.register((ServiceHandler) component);
+                        } else {
+                            if (IAutomation.class.isAssignableFrom(component.getClass()))
+                                Automations.register((IAutomation) component);
                         }
                     }
-                } catch (Exception e) {
+                }
 
-                    Log.warning(Framework.class, "Error detected while loading classes",
+                if (debug) Log.information(Framework.class, "Starting automations");
+
+                for (IAutomation one : Automations.getAll()) {
+
+                    if (one.isRunning()) continue;
+
+                    if (Worker.class.isAssignableFrom(one.getClass())) {
+                        ((Worker) one).start();
+                    } else {
+                        if (debug && log)
+                            Log.information(Automations.class, "Starting an automation", "Automation: " + one);
+
+                        try {
+                            one.start();
+                        } catch (Exception e) {
+
+                            if (log) Log.error(Framework.class,
+                                    "Error detected",
+                                    "Operation: start an automation",
+                                    "Automation: " + one,
+                                    "Error: " + e.getMessage(),
+                                    Log.stringify(e.getStackTrace()));
+
+                            if (debug && log) Log.information(Automations.class,
+                                    "An automation is " + (one.isRunning() ? "started" : "not started"),
+                                    "Automation: " + one);
+                        }
+                    }
+                }
+
+                if (debug) Log.information(Framework.class, "Shark is started");
+
+                try {
+                    onStarted.invoke(signature);
+                } catch (Exception e) {
+                    if (log) Log.error(Framework.class,
+                            "Error detected during invocation of event Framework.onStarted",
                             "Error: " + e.getMessage(),
                             Log.stringify(e.getStackTrace()));
                 }
-
-                for (Class cls : classes) {
-
-                    if (Modifier.isAbstract(cls.getModifiers())) continue;
-
-                    if (ServiceHandler.class.isAssignableFrom(cls)) {
-
-                        ServiceHandler handler = null;
-                        try {
-
-                            handler = (ServiceHandler) cls.newInstance();
-
-                        } catch (Exception e) {
-
-                            if (debug)
-                                Log.error(Framework.class, "Error detected while registering service", "Class: " + cls.getName(), "Error: " + e.getMessage(), Log.stringify(e.getStackTrace()));
-                            continue;
-                        }
-
-                        Services.register(handler);
-                    }
-
-                    if (IAutomation.class.isAssignableFrom(cls)) {
-
-                        IAutomation automation = null;
-
-                        try {
-
-                            automation = (IAutomation) cls.newInstance();
-
-                        } catch (Exception e) {
-
-                            if (debug)
-                                Log.error(Framework.class, "Error detected while registering automation", "Class: " + cls.getName(), "Error: " + e.getMessage(), Log.stringify(e.getStackTrace()));
-                            continue;
-                        }
-
-                        Automations.register(automation);
-                    }
-                }
             }
+        };
 
-            if (debug) Log.information(Framework.class, "Starting automations");
+        if (Looper.myLooper() == Looper.getMainLooper()) {
 
-            for (IAutomation one : Automations.getAll()) {
-
-                if (one.isRunning()) continue;
-
-                if (Worker.class.isAssignableFrom(one.getClass())) {
-                    ((Worker) one).start();
-                } else {
-                    if (debug && log)
-                        Log.information(Automations.class, "Starting an automation", "Automation: " + one);
-
-                    try {
-                        one.start();
-                    } catch (Exception e) {
-
-                        if (log) Log.error(Framework.class,
-                                "Error detected",
-                                "Operation: start an automation",
-                                "Automation: " + one,
-                                "Error: " + e.getMessage(),
-                                Log.stringify(e.getStackTrace()));
-
-                        if (debug && log) Log.information(Automations.class,
-                                "An automation is " + (one.isRunning() ? "started" : "not started"),
-                                "Automation: " + one);
-                    }
-                }
-            }
-
-            if (debug) Log.information(Framework.class, "Shark is started");
-
-            try {
-                onStarted.invoke(signature);
-            } catch (Exception e) {
-                if (log) Log.error(Framework.class,
-                        "Error detected during invocation of event Framework.onStarted",
-                        "Error: " + e.getMessage(),
-                        Log.stringify(e.getStackTrace()));
-            }
+            Thread thread = new Thread(commit);
+            thread.setDaemon(true);
+            thread.start();
+        }
+        else {
+            commit.run();
         }
     }
 

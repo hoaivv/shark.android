@@ -1,7 +1,7 @@
 package shark.components;
 
 
-public interface IServiceHandler {
+public interface IServiceHandler extends ISharkComponent {
 
     int computeIdentifier(IServiceRequestInfo request) throws ServiceException;
 

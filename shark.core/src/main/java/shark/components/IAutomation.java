@@ -4,7 +4,7 @@ package shark.components;
  * Defines a Shark Automation. Any class to be registered as Shark Automation must implement this
  * interface
  */
-public interface IAutomation {
+public interface IAutomation extends ISharkComponent {
 
     /**
      * Indicates whether the automation is running or not.

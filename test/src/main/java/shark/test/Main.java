@@ -11,17 +11,38 @@ import shark.delegates.Action;
 import shark.delegates.Action1;
 import shark.runtime.Cache;
 import shark.runtime.Parallel;
+import shark.runtime.events.ActionEvent;
 import shark.utils.LogData;
 
 public class Main extends Activity {
 
     WebView view;
 
+    private Object secret = new Object();
+
+    private Cache<String, String> getCache() {
+        try {
+            return Cache.of(String.class, String.class);
+        }
+        catch (InterruptedException e){
+            return null;
+        }
+    }
+
+    private Cache<String, String> getCache2;
+
+    public ActionEvent<String> someEvent = new ActionEvent<>(secret);
+
    // MessengerClient client = new MessengerClient("api.ahacafe.vn", 500);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        Parallel.start(() -> {
+
+        });
+
 
         view = new WebView(this);
         view.getSettings().setJavaScriptEnabled(true);
@@ -74,11 +95,16 @@ public class Main extends Activity {
 
         final Context context = this;
 
+
+
         new Thread(new Runnable() {
             @Override
             public void run() {
 
-                Framework.start(context);
+                Framework.start(context,
+
+                        new TestService(),
+                        new TestService());
 
                 //try {
                     //Services.get("test", String.class).process(new ServiceRequestInfo<String>("Hoai"));
@@ -87,5 +113,13 @@ public class Main extends Activity {
                 //}
             }
         }).start();
+    }
+
+    public Cache<String, String> getGetCache2() {
+        return getCache2;
+    }
+
+    public void setGetCache2(Cache<String, String> getCache2) {
+        this.getCache2 = getCache2;
     }
 }
