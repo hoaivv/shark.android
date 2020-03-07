@@ -53,6 +53,7 @@ public final class http {
          */
         public Request method(String method){
             this.method = method;
+            return this;
         }
 
         /**
