@@ -1,48 +1,25 @@
 package shark.test;
 
 import android.app.Activity;
-import android.content.Context;
 import android.os.Bundle;
-import android.util.Log;
 import android.webkit.WebView;
 
-import shark.Framework;
-import shark.delegates.Action;
-import shark.delegates.Action1;
-import shark.runtime.Cache;
-import shark.runtime.Parallel;
-import shark.runtime.events.ActionEvent;
-import shark.utils.LogData;
+import shark.utils.http;
 
 public class Main extends Activity {
 
-    WebView view;
-
-    private Object secret = new Object();
-
-    private Cache<String, String> getCache() {
-        try {
-            return Cache.of(String.class, String.class);
-        }
-        catch (InterruptedException e){
-            return null;
-        }
+    class SongDTO {
+        public String ID;
+        public String FileName;
+        public long InfoStamp;
+        public long DataStamp;
     }
 
-    private Cache<String, String> getCache2;
-
-    public ActionEvent<String> someEvent = new ActionEvent<>(secret);
-
-   // MessengerClient client = new MessengerClient("api.ahacafe.vn", 500);
+    WebView view;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        Parallel.start(() -> {
-
-        });
-
 
         view = new WebView(this);
         view.getSettings().setJavaScriptEnabled(true);
@@ -51,75 +28,8 @@ public class Main extends Activity {
 
         setContentView(view);
 
-        Framework.onLogged.add(new Action1<LogData>() {
-            @Override
-            public void run(LogData eventArgs) {
-
-                switch (eventArgs.getType()) {
-                    case Error: Log.e(eventArgs.getOwner().getName(), eventArgs.getTrace() + ": " + eventArgs.getMessage()); break;
-                    case Warning: Log.w(eventArgs.getOwner().getName(), eventArgs.getTrace() + ": " + eventArgs.getMessage()); break;
-                    case Information: Log.i(eventArgs.getOwner().getName(), eventArgs.getTrace() + ": " + eventArgs.getMessage()); break;
-                }
-            }
+        http.get("http://api.ahacafe.vn/music/songs", SongDTO[].class).then(songs -> {
+           SongDTO[] buffer = songs;
         });
-
-        Framework.onStarted.add(new Action() {
-            @Override
-            public void run() {
-
-                Parallel.start(new Runnable() {
-                    @Override
-                    public void run() {
-
-                        try {
-
-                            Cache<String, String> cache = Cache.of(String.class, String.class);
-                            //Cache.of(String.class, String.class).clear();
-                            //Cache.of(String.class, String.class).update("t1", "aaa");
-                            //Cache.of(String.class, String.class).update("t2", "aaa");
-                            //Log.i("!!!!!!", cache.retrive("test"));
-                        }
-                        catch (InterruptedException e) {
-                        }
-                    }
-                });
-
-
-            }
-        });
-
-        Framework.log = true;
-        Framework.debug = true;
-        Framework.traceLogCaller = true;
-        Framework.writeLogsToFiles = true;
-
-        final Context context = this;
-
-
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-
-                Framework.start(context,
-
-                        new TestService(),
-                        new TestService());
-
-                //try {
-                    //Services.get("test", String.class).process(new ServiceRequestInfo<String>("Hoai"));
-                //}
-                //catch (InterruptedException e) {
-                //}
-            }
-        }).start();
-    }
-
-    public Cache<String, String> getGetCache2() {
-        return getCache2;
-    }
-
-    public void setGetCache2(Cache<String, String> getCache2) {
-        this.getCache2 = getCache2;
     }
 }

@@ -1,32 +1,7 @@
 package shark.net;
 
-import android.net.wifi.WifiConfiguration;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketAddress;
-import java.util.Dictionary;
-import java.util.HashMap;
-import java.util.LinkedList;
-
-import shark.Framework;
-import shark.delegates.Action;
-import shark.delegates.Action1;
-import shark.net.data.ConnectionCloseReason;
-import shark.net.data.ConnectionClosedEventArgs;
-import shark.net.data.ConnectionEventArgs;
-import shark.runtime.CachingMode;
-import shark.runtime.Parallel;
-import shark.runtime.Workers;
-import shark.runtime.events.ActionEvent;
-import shark.utils.Log;
-
 public class Connection {
-
+/*
     private static Object signature = new Object();
 
     public static ActionEvent<ConnectionEventArgs> onInstanceConstructed = new ActionEvent<>(signature);
@@ -423,4 +398,5 @@ public class Connection {
 
         }
     }
+*/
 }

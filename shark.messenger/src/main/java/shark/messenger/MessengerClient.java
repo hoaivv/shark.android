@@ -1,8 +1,8 @@
 package shark.messenger;
 
-import shark.delegates.Action1;
-import shark.delegates.Function1;
 import shark.runtime.Promise;
+import shark.runtime.events.ActionEvent;
+import shark.runtime.events.ActionTrigger;
 import shark.utils.http;
 
 public class MessengerClient implements MessengerTarget {
@@ -10,9 +10,11 @@ public class MessengerClient implements MessengerTarget {
     MessengerChannel _channel = null;
     String _server = null;
 
-    public Action1<MessengerPackage> onPackageReceived = null;
-    public Runnable onChannelRegistered = null;
-    public Runnable onChannelTerminated = null;
+    private Object secret = new Object();
+    
+    public ActionEvent<MessengerPackage> onPackageReceived = new ActionEvent<>(secret);
+    public ActionTrigger onChannelRegistered = new ActionTrigger(secret);
+    public ActionTrigger onChannelTerminated = new ActionTrigger(secret);
 
     public int interval = 500;
 
@@ -57,13 +59,11 @@ public class MessengerClient implements MessengerTarget {
             try {
                 while (client._channel == channel) {
 
-                    http.Response httpResponse = http.get(_server + "/" + channel.PullKey).getResult();
-                    PullResponse response = httpResponse == null ? null : httpResponse.getObject(new PullResponse()).getResult();
+                    PullResponse response = http.get(_server + "/" + channel.PullKey, PullResponse.class).getResult();
 
                     if (response != null && response.Succeed && response.Data != null) {
 
-                        Action1<MessengerPackage> callback = onPackageReceived;
-                        if (callback != null) for (MessengerPackage one : response.Data) try { callback.run(one); } catch (Exception e) { }
+                        if (onPackageReceived.hasHandler()) for (MessengerPackage one : response.Data) try { onPackageReceived.invoke(secret, one); } catch (Exception e) { }
 
                         Thread.sleep(Math.max(1, client.interval));
                     }
@@ -105,32 +105,27 @@ public class MessengerClient implements MessengerTarget {
 
         if (description == null || description.length() == 0) return new Promise<>(false);
 
-        final MessengerChannel request = new MessengerChannel();
+        MessengerChannel request = new MessengerChannel();
         request.Description = description;
 
-        final MessengerClient client = this;
+        return http
+                .post(_server + "/register", request, RegisterResponse.class)
+                .then(response -> {
 
-        return http.post(_server + "/register", request).<Boolean>then(new Function1<http.Response, Boolean>() {
-            @Override
-            public Boolean run(http.Response data) {
+                    MessengerChannel channel = response == null || !response.Succeed ? null : response.Data;
 
-                RegisterResponse response = data == null ? null : data.getObject(new RegisterResponse()).getResult();
-                final MessengerChannel channel = response == null || !response.Succeed ? null : response.Data;
+                    if (channel != null) {
 
-                if (channel != null) {
+                        synchronized (this) {
+                            _channel = channel;
+                            try { onChannelRegistered.invoke(secret); } catch (Exception e) { }
+                        }
 
-                    synchronized (this) {
-                        _channel = channel;
-                        Runnable callback = onChannelRegistered;
-                        if (callback != null) callback.run();
+                        new Puller(this, channel).start();
                     }
 
-                    new Puller(client, channel).start();
-                }
-
-                return channel != null;
-            }
-        });
+                    return channel != null;
+                });
     }
 
     public void unregister(){
@@ -139,8 +134,7 @@ public class MessengerClient implements MessengerTarget {
             if (_channel != null) {
 
                 _channel = null;
-                Runnable callback = onChannelTerminated;
-                if (callback != null) callback.run();
+                try { onChannelTerminated.invoke(secret); } catch (Exception e) { }
             }
         }
     }
@@ -153,50 +147,40 @@ public class MessengerClient implements MessengerTarget {
 
         MessengerChannel channel = _channel;
 
-        final String sender = channel == null ? null : channel.PushKey;
-        final String receiver = target == null ? null : target.getPushKey();
+        String sender = channel == null ? null : channel.PushKey;
+        String receiver = target == null ? null : target.getPushKey();
 
         if (sender == null || sender.length() == 0 || receiver == null || receiver.length() == 0 || type == null || type.length() == 0) return new Promise<>(false);
 
-        final MessengerPackage request = new MessengerPackage();
+        MessengerPackage request = new MessengerPackage();
 
         request.PushKey = sender;
         request.Type = type;
         request.Data = data;
 
-        return http.post(_server + "/" + receiver, request).then(new Function1<http.Response, Boolean>() {
-            @Override
-            public Boolean run(http.Response httpResponse) {
-
-                PushResponse response = httpResponse == null ? null : httpResponse.getObject(new PushResponse()).getResult();
-                return response != null && response.Succeed && response.Data > 0;
-            }
-        });
+        return http
+                .post(_server + "/" + receiver, request, PushResponse.class)
+                .then(response -> response != null && response.Succeed && response.Data > 0);
     }
 
     public Promise<Boolean> publish(String name, String data) {
 
         MessengerChannel channel = _channel;
 
-        final String sender = channel == null ? null : channel.PullKey;
-        final String receiver = channel == null ? null : channel.PushKey;
+        String sender = channel == null ? null : channel.PullKey;
+        String receiver = channel == null ? null : channel.PushKey;
 
         if (sender == null || sender.length() == 0 || receiver == null || receiver.length() == 0 || name == null || name.length() == 0 || data == null) return new Promise<>(false);
 
-        final MessengerPackage request = new MessengerPackage();
+        MessengerPackage request = new MessengerPackage();
 
         request.PushKey = sender;
         request.Type = name;
         request.Data = data;
 
-        return http.post(_server + "/" + receiver, request).then(new Function1<http.Response, Boolean>() {
-            @Override
-            public Boolean run(http.Response httpResponse) {
-
-                PushResponse response = httpResponse == null ? null : httpResponse.getObject(new PushResponse()).getResult();
-                return response != null && response.Succeed && response.Data > 0;
-            }
-        });
+        return http
+                .post(_server + "/" + receiver, request, PushResponse.class)
+                .then(response -> response != null && response.Succeed && response.Data > 0);
     }
 
     public Promise<Boolean> delete(String name) {
@@ -214,14 +198,9 @@ public class MessengerClient implements MessengerTarget {
         request.Type = name;
         request.Data = null;
 
-        return http.post(_server + "/" + receiver, request).then(new Function1<http.Response, Boolean>() {
-            @Override
-            public Boolean run(http.Response httpResponse) {
-
-                PushResponse response = httpResponse == null ? null : httpResponse.getObject(new PushResponse()).getResult();
-                return response != null && response.Succeed && response.Data > 0;
-            }
-        });
+        return http
+                .post(_server + "/" + receiver, request, PushResponse.class)
+                .then(response -> response != null && response.Succeed && response.Data > 0);
     }
 
     class ChannelsResponse extends MessengerResponse {
@@ -230,13 +209,9 @@ public class MessengerClient implements MessengerTarget {
 
     public Promise<MessengerChannel[]> getChannels() {
 
-        return http.get(_server + "/channels").then(new Function1<http.Response, MessengerChannel[]>() {
-            @Override
-            public MessengerChannel[] run(http.Response httpResponse) {
-                ChannelsResponse response =  httpResponse == null ? null : httpResponse.getObject(new ChannelsResponse()).getResult();
-                return response != null && response.Succeed == true ? response.Data : new MessengerChannel[0];
-            }
-        });
+        return http
+                .get(_server + "/channels", ChannelsResponse.class)
+                .then(response -> response != null && response.Succeed == true ? response.Data : new MessengerChannel[0]);
     }
 
     class ResourceNamesResponse extends MessengerResponse {
@@ -252,13 +227,11 @@ public class MessengerClient implements MessengerTarget {
         channel = new MessengerChannel();
         channel.PushKey = key;
 
-        return http.post(_server + "/resources", channel).<String[]>then(new Function1<http.Response, String[]>() {
-            @Override
-            public String[] run(http.Response httpResponse) {
-                ResourceNamesResponse response = httpResponse == null ? null : httpResponse.getObject(new ResourceNamesResponse()).getResult();
-                return response != null && response.Succeed == true && response.Data != null ? response.Data : new String[0];
-            }
-        });
+
+
+        return http
+                .post(_server + "/resources", channel, ResourceNamesResponse.class)
+                .then(response -> response != null && response.Succeed == true && response.Data != null ? response.Data : new String[0]);
     }
 
     public Promise<MessengerPackage> getResource(MessengerChannel channel, String name){
@@ -271,12 +244,8 @@ public class MessengerClient implements MessengerTarget {
         channel.PushKey = key;
         channel.PullKey = name;
 
-        return http.post(_server + "/resources", channel).<MessengerPackage>then(new Function1<http.Response, MessengerPackage>() {
-            @Override
-            public MessengerPackage run(http.Response httpResponse) {
-                PullResponse response = httpResponse == null ? null : httpResponse.getObject(new PullResponse()).getResult();
-                return response != null && response.Succeed == true && response.Data != null && response.Data.length > 0 ? response.Data[0] : null;
-            }
-        });
+        return http
+                .post(_server + "/resources", channel, PullResponse.class)
+                .then(response -> response != null && response.Succeed == true && response.Data != null && response.Data.length > 0 ? response.Data[0] : null);
     }
 }

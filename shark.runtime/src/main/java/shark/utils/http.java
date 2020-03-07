@@ -10,7 +10,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -44,46 +43,40 @@ public final class http {
             connection = null;
         }
 
-        public <T> Promise<T> getObject(T instance) {
+        public <T> Promise<T> getObject(Class<T> type) {
 
             final Promise<T> result = new Promise<>();
 
-            if (connection == null || instance == null) {
+            if (connection == null || type == null) {
                 result.resolve(null);
                 return result;
             }
 
-            final Type type = instance.getClass();
+            Runnable commit = () -> {
 
-            Runnable commit = new Runnable() {
-                @Override
-                public void run() {
+                InputStreamReader reader = null;
 
-                    InputStreamReader reader = null;
+                try {
+                    reader = new InputStreamReader(connection.getInputStream());
+
+                    result.resolve((T) new Gson().fromJson(reader, type));
+                } catch (Exception e1) {
 
                     try {
-                        reader = new InputStreamReader(connection.getInputStream());
-
-                        result.resolve((T)new Gson().fromJson(reader, type));
+                        if (reader != null) reader.close();
+                    } catch (Exception e2) {
                     }
-                    catch (Exception e1) {
 
-                        try{
-                            if (reader != null) reader.close();
-                        }
-                        catch (Exception e2) {
-                        }
-
-                        result.resolve(null);
-                    }
-                    finally {
-                        close();
-                    }
+                    result.resolve(null);
+                } finally {
+                    close();
                 }
             };
 
             if (Looper.myLooper() == Looper.getMainLooper()) {
-                new Thread(commit).start();
+                Thread thread = new Thread(commit);
+                thread.setDaemon(true);
+                thread.start();
             }
             else {
                 commit.run();
@@ -101,42 +94,41 @@ public final class http {
                 return  result;
             }
 
-            Runnable commit = new Runnable() {
-                @Override
-                public void run() {
+            Runnable commit = () -> {
 
-                    InputStream stream = null;
+                InputStream stream = null;
+
+                try {
+
+                    stream = connection.getInputStream();
+
+                    int count = 0;
+                    byte[] data = new byte[connection.getContentLength()];
+
+                    while (count < data.length) {
+                        count += stream.read(data, count, data.length - count);
+                        if (count < data.length) Thread.sleep(10);
+                    }
+
+                    result.resolve(data);
+                } catch (Exception e1) {
 
                     try {
-
-                        stream = connection.getInputStream();
-
-                        int count = 0;
-                        byte[] data = new byte[connection.getContentLength()];
-
-                        while (count < data.length) {
-                            count += stream.read(data, count, data.length - count);
-                            if (count < data.length) Thread.sleep(10);
-                        }
-
-                        result.resolve(data);
-                    } catch (Exception e1) {
-
-                        try {
-                            if (stream != null) stream.close();
-                        } catch (Exception e2) {
-                        }
-
-                        result.resolve(null);
-                    } finally {
-                        close();
+                        if (stream != null) stream.close();
+                    } catch (Exception e2) {
                     }
+
+                    result.resolve(null);
+                } finally {
+                    close();
                 }
             };
 
             if (Looper.myLooper() == Looper.getMainLooper()) {
 
-                new Thread(commit).start();
+                Thread thread = new Thread(commit);
+                thread.setDaemon(true);
+                thread.start();
             }
             else {
 
@@ -189,7 +181,9 @@ public final class http {
         };
 
         if (Looper.myLooper() == Looper.getMainLooper()) {
-            new Thread(commit).start();
+            Thread thread = new Thread(commit);
+            thread.setDaemon(true);
+            thread.start();
         }
         else {
             commit.run();
@@ -252,7 +246,9 @@ public final class http {
         };
 
         if (Looper.getMainLooper() == Looper.myLooper()) {
-            new Thread(commit).start();
+            Thread thread = new Thread(commit);
+            thread.setDaemon(true);
+            thread.start();
         }
         else {
             commit.run();
@@ -263,6 +259,18 @@ public final class http {
 
     public static Promise<Response> get(String url) {
         return singleton._get(url);
+    }
+
+    public static <T> Promise<T> get(String url, Class<T> type) {
+
+        return get(url).then(response -> {
+           try {
+               return response != null && response.getStatus() == 200 ? response.getObject(type).getResult() : null;
+           }
+           catch (Exception e) {
+               return null;
+           }
+        });
     }
 
     public static Promise<Response> post(String url, String contentType, byte[] data) {
@@ -279,6 +287,17 @@ public final class http {
         }
     }
 
+    public static <T> Promise<T> post(String url, Object obj, Class<T> type) {
+        return post(url, obj).then(response -> {
+           try{
+               return response != null && response.getStatus() == 200 ? response.getObject(type).getResult() : null;
+           }
+           catch (Exception e) {
+               return null;
+           }
+        });
+    }
+
     public static Promise<Response> post(String url, String contentType, String data) {
 
         if (data == null) return new Promise<Response>(null);
@@ -288,5 +307,17 @@ public final class http {
         catch (UnsupportedEncodingException ex){
             return new Promise<>(null);
         }
+    }
+
+    public static <T> Promise<T> post(String url, String contentType, String data, Class<T> type) {
+
+        return post(url, contentType, data).then(response -> {
+            try {
+                return response != null && response.getStatus() == 200 ? response.getObject(type).getResult() : null;
+            }
+            catch (Exception e) {
+                return null;
+            }
+        });
     }
 }
