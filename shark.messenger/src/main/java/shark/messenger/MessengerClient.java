@@ -59,7 +59,7 @@ public class MessengerClient implements MessengerTarget {
             try {
                 while (client._channel == channel) {
 
-                    PullResponse response = http.get(_server + "/" + channel.PullKey, PullResponse.class).getResult();
+                    PullResponse response = http.get(_server + "/" + channel.PullKey, PullResponse.class).result();
 
                     if (response != null && response.Succeed && response.Data != null) {
 
@@ -71,7 +71,7 @@ public class MessengerClient implements MessengerTarget {
 
                         boolean alive = false;
 
-                        for (MessengerChannel one : getChannels().getResult()) {
+                        for (MessengerChannel one : getChannels().result()) {
                             if (one.PushKey == channel.PushKey) {
                                 alive = true;
                                 break;

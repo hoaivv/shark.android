@@ -42,6 +42,8 @@ public final class http {
          */
         private Request(String url) {
             this.method = "GET";
+
+            if (!url.startsWith("http://") && !url.startsWith("https://")) url = "http://" + url;
             this.url = url;
         }
 
@@ -465,7 +467,7 @@ public final class http {
 
         return get(url).then(response -> {
            try {
-               return response != null && response.getStatus() == 200 ? response.getObject(expect).getResult() : null;
+               return response != null && response.getStatus() == 200 ? response.getObject(expect).result() : null;
            }
            catch (Exception e) {
                return null;
@@ -499,7 +501,7 @@ public final class http {
     public  static <T> Promise<T> post(String url, String contentType, byte[] data, Class<T> type) {
         return post(url, contentType, data).then(response -> {
             try {
-                return response != null && response.getStatus() == 200 ? response.getObject(type).getResult() : null;
+                return response != null && response.getStatus() == 200 ? response.getObject(type).result() : null;
             } catch (Exception e) {
                 return null;
             }
@@ -537,7 +539,7 @@ public final class http {
     public static <T> Promise<T> post(String url, Object obj, Class<T> expect) {
         return post(url, obj).then(response -> {
            try{
-               return response != null && response.getStatus() == 200 ? response.getObject(expect).getResult() : null;
+               return response != null && response.getStatus() == 200 ? response.getObject(expect).result() : null;
            }
            catch (Exception e) {
                return null;
@@ -579,7 +581,7 @@ public final class http {
 
         return post(url, contentType, data).then(response -> {
             try {
-                return response != null && response.getStatus() == 200 ? response.getObject(expect).getResult() : null;
+                return response != null && response.getStatus() == 200 ? response.getObject(expect).result() : null;
             }
             catch (Exception e) {
                 return null;
@@ -618,7 +620,7 @@ public final class http {
 
         return send(request).then(response -> {
             try {
-                return response != null && response.getStatus() == 200 ? response.getObject(expect).getResult() : null;
+                return response != null && response.getStatus() == 200 ? response.getObject(expect).result() : null;
             }
             catch (Exception e) {
                 return null;

@@ -28,10 +28,6 @@ public class Main extends Activity {
 
         setContentView(view);
 
-        http.at("http://api.ahacafe.vn/music/songs").expect(SongDTO[].class).then(songs -> {
-           Object test = songs;
-        });
-
-
+        SongDTO[] songs = http.at("api.ahacafe.vn/music/songs").expect(SongDTO[].class).result();
     }
 }

@@ -50,7 +50,7 @@ public final class Promise<T> {
      * is completed
      * @return operation result
      */
-    public final T getResult() {
+    public final T result() {
 
         try {
 
