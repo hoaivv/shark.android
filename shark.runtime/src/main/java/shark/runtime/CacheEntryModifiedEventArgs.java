@@ -1,14 +1,27 @@
 package shark.runtime;
 
+/**
+ * Argument of cache entry modification event
+ * @param <TIndex> type of entry index
+ * @param <TData> type of entry data
+ */
 public class CacheEntryModifiedEventArgs<TIndex, TData> {
 
     private CacheEntry<TIndex, TData> entry;
     private CacheEntryAction action;
 
+    /**
+     * Gets the entry, which is modified
+     * @return instance of {@link CacheEntry}
+     */
     public CacheEntry<TIndex, TData> getEntry() {
         return entry;
     }
 
+    /**
+     * Gets the committed action the the modified entry
+     * @return action committed to the modified entry
+     */
     public CacheEntryAction getAction() {
         return action;
     }

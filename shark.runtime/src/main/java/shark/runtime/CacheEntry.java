@@ -9,6 +9,11 @@ import shark.io.File;
 import shark.runtime.serialization.Serializer;
 import shark.utils.Log;
 
+/**
+ * Provides access to entries of caches of Shark Caching System
+ * @param <TIndex> type of entry index
+ * @param <TData> type of entry data
+ */
 public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
 
     private static HashMap<String, CacheEntryOperator> instances = new HashMap<>();
@@ -62,26 +67,54 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
         if (creationStampUtc == null) Cache.of(indexClass, dataClass)._removeUnsettled(index);
     }
 
+    /**
+     * Indicates whether the entry is loaded or not
+     * @return true if the entry is loaded; otherwise false
+     */
     public boolean isLoaded() {
         return isLoaded;
     }
 
+    /**
+     * Gets type scope identifier of the entry
+     * @return type scope identifier of the entry
+     */
     public long getTypeScopeUniqueIdentifier() {
         return fileIndex;
     }
 
+    /**
+     * Gets type scope unique instance ot the entry
+     * @return type scope unique instance of the entry
+     */
     public ITypeScopeDistinguishable getTypeScopeUniqueInstance() {
         return this;
     }
 
+    /**
+     * Gets the file which stored the entry information. This method blocks calling thread until
+     * {@link shark.Framework} is started
+     * @return file which stored the entry information
+     * @throws InterruptedException throws if the calling thread is interruped before
+     * {@link shark.Framework} is started
+     */
     public File getFile() throws InterruptedException {
         return CacheEntry._of(indexClass, dataClass)._getFile(fileIndex);
     }
 
+    /**
+     * Gets file index of the entry
+     * @return file index of the entry
+     */
     public long getFileIndex() {
         return fileIndex;
     }
 
+    /**
+     * Gets entry index
+     * @return index of the entry
+     * @throws IOException throws if entry information could not be loaded from file
+     */
     public TIndex getIndex() throws IOException {
 
         synchronized (this) {
@@ -90,6 +123,11 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
         }
     }
 
+    /**
+     * Getes entry data
+     * @return data of the entry
+     * @throws IOException throws if entry information could not be loaded from file
+     */
     public TData getData() throws IOException {
 
         synchronized (this) {
@@ -98,6 +136,11 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
         }
     }
 
+    /**
+     * Gets entry creation timestamp
+     * @return entry creation timestamp
+     * @throws IOException throws if entry information could not be loaded from file
+     */
     public long getCreationStampUtc() throws IOException {
 
         synchronized (this) {
@@ -106,6 +149,11 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
         }
     }
 
+    /**
+     * Gets entry last modification timestamp
+     * @return entry last modification timestamp
+     * @throws IOException throws if entry information could not be loaded from file
+     */
     public long getLastModifiedUtc() throws IOException {
 
         synchronized (this) {
@@ -114,6 +162,13 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
         }
     }
 
+    /**
+     * Indicates whether the entry is deleted/not initialised or not. This method block the calling
+     * thread until {@link shark.Framework} is started
+     * @return true if the entry is deleted/not initialised; otherwise false
+     * @throws InterruptedException throws if the calling thread is interruped before
+     * {@link shark.Framework} is started
+     */
     public boolean isDeletedOrNotInitialized() throws InterruptedException {
 
         synchronized (this) {
@@ -156,7 +211,7 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
         }
     }
 
-    boolean save() {
+    boolean _save() {
 
         try {
 
@@ -198,6 +253,15 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
         }
     }
 
+    /**
+     * Updates entry data. This method block the calling thread until {@link shark.Framework} is
+     * started
+     * @param value data to be set as entry data
+     * @param lastModifiedUtc timestamp to be set as  entry last modification stamp
+     * @return true if succeed; otherwise false
+     * @throws InterruptedException throws if the calling thread is interruped before
+     * {@link shark.Framework} is started
+     */
     public boolean update(TData value, long lastModifiedUtc) throws InterruptedException {
 
         synchronized (this) {
@@ -229,10 +293,26 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
         return true;
     }
 
+    /**
+     * Updates entry data. This method block the calling thread until {@link shark.Framework} is
+     * started
+     * @param value data to be set as entry data
+     * @return true if succeed; otherwise false
+     * @throws InterruptedException throws if the calling thread is interruped before
+     * {@link shark.Framework} is started
+     */
     public boolean update(TData value) throws InterruptedException {
         return update(value, System.currentTimeMillis());
     }
 
+    /**
+     * Deletes the entry. This method block the calling thread until {@link shark.Framework} is
+     * started
+     * @param actionStampUtc timestamp to be set as current cache type last modification stamp
+     * @return true if succeed; otherwise false
+     * @throws InterruptedException throws if the calling thread is interruped before
+     * {@link shark.Framework} is started
+     */
     public boolean delete(long actionStampUtc) throws InterruptedException {
 
         synchronized (this) {
@@ -253,10 +333,21 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
         return true;
     }
 
+    /**
+     * Deletes the entry. This method block the calling thread until {@link shark.Framework} is
+     * started
+     * @return true if succeed; otherwise false
+     * @throws InterruptedException throws if the calling thread is interruped before
+     * {@link shark.Framework} is started
+     */
     public boolean delete() throws InterruptedException {
         return delete(System.currentTimeMillis());
     }
 
+    /**
+     * Represents the entry as a string
+     * @return the string which represents the entry
+     */
     @Override
     public String toString() {
         return data == null ? "" : data.toString();

@@ -14,35 +14,54 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-import shark.delegates.Function1;
 import shark.runtime.Promise;
 
+/**
+ * Provides access to resources, served via HTTP protocols
+ */
 public final class http {
 
     private http(){}
 
     private static http singleton = new http();
 
+    /**
+     * Describes a HTTP response
+     */
     public final class Response implements Closeable {
 
         HttpURLConnection connection = null;
 
-        public Response(HttpURLConnection connection) throws IllegalArgumentException {
+        Response(HttpURLConnection connection) throws IllegalArgumentException {
 
             if (connection == null) throw new IllegalArgumentException();
             this.connection = connection;
         }
 
+        /**
+         * Get HTTP status code
+         * @return HTTP status code of the response
+         * @throws IOException throws if the response is not valid
+         */
         public int getStatus() throws IOException {
             return connection.getResponseCode();
         }
 
+        /**
+         * Close the underlying streams and connections of the response
+         */
         @Override
         public void close() {
             if (connection != null) connection.disconnect();
             connection = null;
         }
 
+        /**
+         * Converts response body from json string to an object
+         * @param type class of object to be extracted
+         * @param <T> type of object to be extracted
+         * @return an instance of provided type if succeed; otherwise null
+         */
         public <T> Promise<T> getObject(Class<T> type) {
 
             final Promise<T> result = new Promise<>();
@@ -85,6 +104,10 @@ public final class http {
             return result;
         }
 
+        /**
+         * Gets response body as a byte array
+         * @return response body as a byte array if succeed; otherwise null
+         */
         public Promise<byte[]> getBytes() {
 
             final Promise<byte[]> result = new Promise<>();
@@ -138,17 +161,18 @@ public final class http {
             return result;
         }
 
+        /**
+         * Gets response body as a string
+         * @return response body as a string if succeed; otherwise null
+         */
         public Promise<String> getString() {
 
-            return getBytes().<String>then(new Function1<byte[], String>() {
-                @Override
-                public String run(byte[] data) {
-                    try {
-                        return new String(data, "UTF-8");
-                    }
-                    catch (Exception e){
-                        return null;
-                    }
+            return getBytes().then(data -> {
+                try {
+                    return new String(data, "UTF-8");
+                }
+                catch (Exception e) {
+                    return null;
                 }
             });
         }
@@ -257,10 +281,23 @@ public final class http {
         return promise;
     }
 
+    /**
+     * Makes a HTTP request to a specified URL using GET method
+     * @param url URL to be requested
+     * @return instance of {@link Promise<Response>}
+     */
     public static Promise<Response> get(String url) {
         return singleton._get(url);
     }
 
+    /**
+     * Makes a HTTP request to a specified URL using GET method and converts response body from json
+     * string to an object of a specified type
+     * @param url URL to be requested
+     * @param type class of object to be extracted from response body
+     * @param <T> type of object to be extracted from response body
+     * @return instance of the specified type if succeed; otherwise null
+     */
     public static <T> Promise<T> get(String url, Class<T> type) {
 
         return get(url).then(response -> {
@@ -273,10 +310,45 @@ public final class http {
         });
     }
 
+    /**
+     * Makes a HTTP request to a specified URL using POST method
+     * @param url URL to be requested
+     * @param contentType content type of request body
+     * @param data request body
+     * @return instance of {@link Promise<Response>}
+     */
     public static Promise<Response> post(String url, String contentType, byte[] data) {
         return singleton._post(url, contentType, data);
     }
 
+    /**
+     * Makes a HTTP request to a specified URL using POST method and converts response body from a
+     * json string to an object of a specified type. This method will send a request with content
+     * type set to application/json
+     * @param url URL to be requested
+     * @param contentType content type of request body
+     * @param data request body
+     * @param type class of the object to be extracted from response body
+     * @param <T> type of the object to be extracted from response body
+     * @return instance of the specified type if succeed; otherwise null
+     */
+    public  static <T> Promise<T> post(String url, String contentType, byte[] data, Class<T> type) {
+        return post(url, contentType, data).then(response -> {
+            try {
+                return response != null && response.getStatus() == 200 ? response.getObject(type).getResult() : null;
+            } catch (Exception e) {
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Makes a HTTP request to a specified URL using POST method. This method will send a request
+     * with content type set to application/json
+     * @param url URL to be requested
+     * @param obj Object to be sent in the request body as a json string
+     * @return instance of {@link Promise<Response>}
+     */
     public static Promise<Response> post(String url, Object obj) {
 
         try {
@@ -287,6 +359,16 @@ public final class http {
         }
     }
 
+    /**
+     * Makes a HTTP request to a specified URL using POST method and converts response body from a
+     * json string to an object of a specified type. This method will send a request with content
+     * type set to application/json
+     * @param url URL to be requested
+     * @param obj Object to be sent in the request body as a json string
+     * @param type class of the object to be extracted from response body
+     * @param <T> type of the object to be extracted from response body
+     * @return instance of the specified type if succeed; otherwise null
+     */
     public static <T> Promise<T> post(String url, Object obj, Class<T> type) {
         return post(url, obj).then(response -> {
            try{
@@ -298,6 +380,13 @@ public final class http {
         });
     }
 
+    /**
+     * Makes a HTTP request to a specified URL using POST method
+     * @param url URL to be requested
+     * @param contentType content type of request body
+     * @param data request body
+     * @return instance of {@link Promise<Response>}
+     */
     public static Promise<Response> post(String url, String contentType, String data) {
 
         if (data == null) return new Promise<Response>(null);
@@ -309,6 +398,17 @@ public final class http {
         }
     }
 
+    /**
+     * Makes a HTTP request to a specified URL using POST method and converts response body from a
+     * json string to an object of a specified type. This method will send a request with content
+     * type set to application/json
+     * @param url URL to be requested
+     * @param contentType content type of request body
+     * @param data request body
+     * @param type class of the object to be extracted from response body
+     * @param <T> type of the object to be extracted from response body
+     * @return instance of the specified type if succeed; otherwise null
+     */
     public static <T> Promise<T> post(String url, String contentType, String data, Class<T> type) {
 
         return post(url, contentType, data).then(response -> {

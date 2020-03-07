@@ -12,7 +12,11 @@ import shark.runtime.serialization.JsonSerializer;
 import shark.runtime.serialization.Serializer;
 import shark.utils.Log;
 
-final class CacheController {
+/**
+ * Controller of Shark Caching System.
+ * {@link Framework} is started
+ */
+public final class CacheController {
 
     private class AllocationJson extends HashMap<String, Long> {
     }
@@ -73,7 +77,7 @@ final class CacheController {
 
         try {
 
-            if (!isPersistent()) getCacheDirectory().delete(true);
+            if (!isPersistent() && getDeleteIfNotPersistent()) getCacheDirectory().delete(true);
 
         } catch (Exception e) {
         }
@@ -127,10 +131,24 @@ final class CacheController {
 
     static ActionEvent<Long> onCleanup = new ActionEvent<>(signature);
 
+    /**
+     * Gets directory where all caching data to be stored. This method blocks calling thread until
+     * {@link Framework} is started
+     * @return directory where all caching data to be stored
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link Framework} is started
+     */
     public static File getCacheDirectory() throws InterruptedException {
         return new File(Framework.getDataDirectory() + "/cache");
     }
 
+    /**
+     * Indicates whether the allocated caches are persistent or not. This method blocks calling
+     * thread until {@link Framework} is started
+     * @return directory where all caching data to be stored
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link Framework} is started
+     */
     public static boolean isPersistent() throws InterruptedException {
 
         return !(new File(getCacheDirectory() + "/.delay")).exists();
@@ -170,35 +188,70 @@ final class CacheController {
         }
     }
 
+    /**
+     * Gets the default serializer of the caches
+     * @return instance of {@link Serializer}
+     */
     public static Serializer getDefaultSerializer() {
         return _defaultSerializer;
     }
 
+    /**
+     * Sets the default serializer of the caches
+     * @param serializer serializer to be set
+     */
     public static void setDefaultSerializer(Serializer serializer) {
         if (serializer != null) {
             _defaultSerializer = serializer;
         }
     }
 
-    public static int getCacheCount() {
+    /**
+     * Gets number of allocated caches
+     * @return number of allocated caches
+     */
+    public static int size() {
         synchronized (_caches) {
             return _caches.size();
         }
     }
 
+    /**
+     * Gets caching mode of the caches
+     * @return caching mode of the caches
+     */
     public static CachingMode getMode() {
         return StoredStates.getInt(CacheController.class, "caching-mode", 0) == 0 ? CachingMode.Dynamic : CachingMode.Static;
     }
 
+    /**
+     * Sets caching mode of the caches
+     * @param mode caching mode to be set
+     */
     public static void setMode(CachingMode mode) {
         StoredStates.set(CacheController.class, "caching-mode", (int)(mode == CachingMode.Static ? 0 : 1));
     }
 
+    public static boolean getDeleteIfNotPersistent() {
+        return StoredStates.getBoolean(CacheController.class, "delete-if-not-persistent", false);
+    }
+
+    public static void setDeleteIfNotPersistent(boolean value) {
+        StoredStates.set(CacheController.class, "delete-if-not-persistent", value);
+    }
+
+    /**
+     * Clears all caches
+     * @param stamp timestamp to be set as caches last modification time
+     */
     public static void clearAll(long stamp) {
         lastCleanupStamp = stamp;
         try { onCleanup.invoke(signature, lastCleanupStamp); } catch (IllegalAccessException e) { }
     }
 
+    /**
+     * Clears all caches
+     */
     public static void clearAll() {
         clearAll(System.currentTimeMillis());
     }

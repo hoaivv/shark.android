@@ -9,11 +9,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import shark.delegates.Action1;
-import shark.io.Binary;
+import shark.io.primitive;
 import shark.io.File;
 import shark.runtime.serialization.Serializer;
 import shark.utils.Log;
 
+/**
+ * Provides access to caches of Shark Caching System.
+ * @param <TIndex> type of caching index
+ * @param <TData> type of caching data
+ */
 public class Cache<TIndex, TData> {
 
     private static HashMap<String, Cache> instances = new HashMap<>();
@@ -189,7 +194,7 @@ public class Cache<TIndex, TData> {
                     FileOutputStream stream = null;
                     try {
                         stream = new FileOutputStream(file);
-                        Binary.write(stream, (long) current);
+                        primitive.write(stream, (long) current);
                     } finally {
                         if (stream != null) stream.close();
                     }
@@ -214,6 +219,17 @@ public class Cache<TIndex, TData> {
         }
     }
 
+    /**
+     * Accesses a specified cache type. This method will block the calling thread until the
+     * {@link shark.Framework} is started
+     * @param index class of the cache index
+     * @param data class of the cache data
+     * @param <TIndex> type of cache index
+     * @param <TData> type of cache data
+     * @return instance of {@link Cache} which provides access to the specified cache type
+     * @throws InterruptedException throws if the calling thread is interrupted before the
+     * {@link shark.Framework} is started
+     */
     public static <TIndex, TData> Cache<TIndex, TData> of(Class<TIndex> index, Class<TData> data) throws InterruptedException {
 
         String key = "index:{" + index.getName() + "}, data:{" + data.getName() + "}";
@@ -226,24 +242,47 @@ public class Cache<TIndex, TData> {
         }
     }
 
-    public int getEntryCount() {
+    /**
+     * Gets the number of entries allocated to the cache
+     * @return
+     */
+    public int size() {
         synchronized (entries) {
             return entries.size();
         }
     }
 
+    /**
+     * Gets the directory where the caching data of the cache is stored. This method blocks the
+     * calling thread until {@link shark.Framework} is started.
+     * @return Directory where the caching data of the cache is stored
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public File getCacheDirectory() throws InterruptedException {
         return new File(CacheController.getCacheDirectory() + "/" + identifer);
     }
 
+    /**
+     * Indicates whether the cache is allocated a storage space to store its data or not
+     * @return true if the cache is allocated; otherwise false
+     */
     public boolean isSpaceAllocated() {
         return identifer > 0;
     }
 
+    /**
+     * Indicates whether the cache is initialised and ready to be used or not
+     * @return true if the cache is ready to be used; otherwise false
+     */
     public boolean isReady() {
         return ready;
     }
 
+    /**
+     * Gets the time stamp, at which the cache data is last modified
+     * @return unix time stamp at which the cache data is last modified
+     */
     public long getLastEntryModifiedUtc() {
         synchronized (entries) {
             if (isSpaceAllocated() && lastEntryModifiedUtc == null) {
@@ -255,7 +294,7 @@ public class Cache<TIndex, TData> {
 
                         FileInputStream stream = null;
                         try {
-                            lastEntryModifiedUtc = Binary.readLong(stream);
+                            lastEntryModifiedUtc = primitive.readLong(stream);
                         }
                         finally {
                             if (stream != null) stream.close();
@@ -279,6 +318,13 @@ public class Cache<TIndex, TData> {
         }
     }
 
+    /**
+     * Gets all allocated entries of the cache. This method will block the calling thread until
+     * {@link shark.Framework} is started
+     * @return array of allocated cache entries
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public CacheEntry<TIndex, TData>[] entries() throws InterruptedException {
         ArrayList<CacheEntry<TIndex, TData>> results = new ArrayList<>();
 
@@ -292,20 +338,37 @@ public class Cache<TIndex, TData> {
         return results.toArray(CacheEntry._of(indexClass, dataClass)._sample);
     }
 
+    /**
+     * Gets all allocated index of the cache.
+     * @return array of allocated index of the cache
+     */
     public TIndex[] indexes() {
         synchronized (entries) {
             return entries.keySet().toArray((TIndex[])Array.newInstance(indexClass, 0));
         }
     }
 
+    /**
+     * Gets the serializer used to serialize/deserialize caching data
+     * @return an instance of {@link Serializer}
+     */
     public Serializer getSerialier() {
         return serialier;
     }
 
+    /**
+     * Gets the serializer used to serialize/deserialize caching data
+     * @param value serializer to be used
+     */
     public void setSerialier(Serializer value) {
         if (value != null) serialier = value;
     }
 
+    /**
+     * Checks whether all of the specified indexes are allocated or not
+     * @param indexes indexes to be checked
+     * @return true if all of the provided indexes are allocated; otherwise false
+     */
     public boolean hasAll(TIndex... indexes) {
         if (!isSpaceAllocated()) return false;
 
@@ -316,6 +379,11 @@ public class Cache<TIndex, TData> {
         return true;
     }
 
+    /**
+     * Checks whether any of the specified indexes is allocated or not
+     * @param indexes indexes to be checked
+     * @return true if any of the provided indexes is allocated; otherwise false
+     */
     public boolean hasAny(TIndex... indexes) {
 
         if (!isSpaceAllocated()) return false;
@@ -327,6 +395,11 @@ public class Cache<TIndex, TData> {
         return false;
     }
 
+    /**
+     * Checks whether a specified index is allocated or not
+     * @param index index to be checked
+     * @return true if the provided index is allocated; otherwise false
+     */
     public boolean has(TIndex index) {
         if (index == null || !isSpaceAllocated()) return false;
         synchronized (entries) {
@@ -334,6 +407,14 @@ public class Cache<TIndex, TData> {
         }
     }
 
+    /**
+     * Gets a specified entry if it exists; otherwise create an entry. This method will block the
+     * calling thread until {@link shark.Framework} is started
+     * @param index index of the entry
+     * @return an instance of {@link CacheEntry} associated with the provided index
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public CacheEntry<TIndex, TData> getOrCreate(TIndex index) throws InterruptedException {
 
         if (index == null) throw new IllegalArgumentException("index is null");
@@ -373,6 +454,14 @@ public class Cache<TIndex, TData> {
         }
     }
 
+    /**
+     * Gets a specified entry. This method will block the calling thread until the
+     * {@link shark.Framework} is started
+     * @param index index of the entry
+     * @return an instance of {@link CacheEntry} if succeed; otherwise null
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public CacheEntry<TIndex,TData> get(TIndex index) throws InterruptedException{
 
         if (index == null) throw new IllegalArgumentException("index is null");
@@ -401,6 +490,14 @@ public class Cache<TIndex, TData> {
         }
     }
 
+    /**
+     * Gets a subset of entries. This method will block the calling thread until
+     * {@link shark.Framework} is started
+     * @param indexes indexes of the entries to be retrieved
+     * @return an array of the requested entries
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public CacheEntry<TIndex, TData>[] entries(TIndex... indexes) throws InterruptedException {
 
         ArrayList<CacheEntry<TIndex, TData>> buffer = new ArrayList<>();
@@ -415,6 +512,15 @@ public class Cache<TIndex, TData> {
 
     }
 
+    /**
+     * Retrieves data of a specified entry. This method blocks the calling thread until
+     * {@link shark.Framework} is started.
+     * @param index index of the entry
+     * @param onFailed data to be returned if entry data could not be retrieved
+     * @return data of the entry if succeed; otherwise provided onFailed value
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public TData retrive(TIndex index, TData onFailed) throws InterruptedException {
 
         if (index == null) return onFailed;
@@ -429,10 +535,27 @@ public class Cache<TIndex, TData> {
         }
     }
 
+    /**
+     * Retrieves data of an entry. This method blocks the calling thread until
+     * {@link shark.Framework} is started
+     * @param index index of the entry
+     * @return data of the entry if succeed; otherwise null
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public TData retrive(TIndex index) throws InterruptedException {
         return retrive(index, null);
     }
 
+    /**
+     * Gets timestamp, at which a specified entry is created. This method will block the calling
+     * thread until {@link shark.Framework} is started
+     * @param index index of the entry
+     * @param onFailed timestamp to be returned if the operation is failed
+     * @return creation timestamp of the entry is succeed; otherwise provided onFailed value
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public long getCreationStampUtc(TIndex index, long onFailed) throws InterruptedException {
 
         if (index == null) return onFailed;
@@ -447,10 +570,27 @@ public class Cache<TIndex, TData> {
         }
     }
 
+    /**
+     * Gets timestamp, at which a specified entry is created. This method will block the calling
+     * thread until {@link shark.Framework} is started
+     * @param index index of the entry
+     * @return creation timestamp of the entry is succeed; otherwise current system timestamp
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public long getCreationStampUtc(TIndex index) throws InterruptedException {
         return getCreationStampUtc(index, System.currentTimeMillis());
     }
 
+    /**
+     * Gets timestamp, at which a specified entry is last modified. This method blocks the
+     * calling thread until {@link shark.Framework} is started
+     * @param index index of the entry
+     * @param onFailed timestamp to be returned if the operation is failed
+     * @return modification timestamp of the entry is succeed; otherwise provided onFailed value
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public long getLastModifiedUtc(TIndex index, long onFailed) throws InterruptedException {
         if (index == null) return onFailed;
 
@@ -464,10 +604,28 @@ public class Cache<TIndex, TData> {
         }
     }
 
+    /**
+     * Gets timestamp, at which a specified entry is last modified. This method blocks the
+     * calling thread until {@link shark.Framework} is started.
+     * @param index index of the entry
+     * @return modification timestamp of the entry is succeed; otherwise 0
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public long getLastModifiedUtc(TIndex index) throws InterruptedException {
         return getLastModifiedUtc(index, 0);
     }
 
+    /**
+     * Updates data of a specified entry. If the entry does not exists it will be created. This
+     * method blocks calling thread until {@link shark.Framework} is started
+     * @param index index of the entry
+     * @param data data to be set to the entry
+     * @param lastModifiedUtc timestamp to be recorded as the last modification time of the entry
+     * @return true if succeed; otherwise false
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public boolean update(TIndex index, TData data, long lastModifiedUtc) throws InterruptedException {
 
         if (index == null) return false;
@@ -475,10 +633,28 @@ public class Cache<TIndex, TData> {
         return entry != null && entry.update(data, lastModifiedUtc);
     }
 
+    /**
+     * Updates data of a specified entry. If the entry does not exists it will be created. This
+     * method blocks calling thread until {@link shark.Framework} is started
+     * @param index index of the entry
+     * @param data data to be set to the entry
+     * @return true if succeed; otherwise false
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public boolean update(TIndex index, TData data) throws InterruptedException {
         return update(index, data, System.currentTimeMillis());
     }
 
+    /**
+     * Deletes an entry. This method blocks the calling thread until {@link shark.Framework} is
+     * started
+     * @param index index of the entry
+     * @param actionStampUtc timestamp to be set as cache last modification time
+     * @return true if succeed; otherwise false
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public boolean delete(TIndex index, long actionStampUtc) throws InterruptedException {
 
         if (index == null) return false;
@@ -488,10 +664,25 @@ public class Cache<TIndex, TData> {
         return entry != null && entry.delete(actionStampUtc);
     }
 
+    /**
+     * Deletes an entry. This method blocks the calling thread until {@link shark.Framework} is
+     * started
+     * @param index index of the entry
+     * @return true if succeed; otherwise false
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public boolean delete(TIndex index) throws InterruptedException {
         return delete(index, System.currentTimeMillis());
     }
 
+    /**
+     * Deletes all entries. This method will block the calling thread until {@link shark.Framework}
+     * is started
+     * @param actionStampUtc timestamp to be set as cache last modification time
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
     public void clear(long actionStampUtc) throws InterruptedException {
         synchronized (entries) {
             lastEntryModifiedUtc = null;
@@ -509,6 +700,12 @@ public class Cache<TIndex, TData> {
         Log.information(this.getClass(), "Cache is clean");
      }
 
+    /**
+     * Deletes all entries. This method will block the calling thread until {@link shark.Framework}
+     * is started
+     * @throws InterruptedException throws if the calling thread is interrupted before
+     * {@link shark.Framework} is started
+     */
      public void clear() throws InterruptedException {
         clear(System.currentTimeMillis());
      }

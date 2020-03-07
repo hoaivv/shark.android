@@ -7,10 +7,20 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 
+/**
+ * Json Serialier of Shark Framework
+ */
 public class JsonSerializer extends Serializer {
 
     private static Gson gson = new Gson();
 
+    /**
+     * Serializes an object and write the serialized data to a stream. This method to be used if
+     * the stream should contain only one object.
+     * @param output Stream to which serialized data of the object to be written
+     * @param data Object to be serialized
+     * @throws SerializationException throws if object could not be serialized to the stream
+     */
     @Override
     public void serialize(OutputStream output, Object data) throws SerializationException {
 
@@ -28,6 +38,13 @@ public class JsonSerializer extends Serializer {
         }
     }
 
+    /**
+     * Serializes an object and write the serialized data to a stream with length prefix. This
+     * method to be used if the stream should contain more than one object.
+     * @param output Stream to which serialized data of the object to be written
+     * @param data Object to be serialized
+     * @throws SerializationException throws if object could not be serialized to the stream
+     */
     @Override
     public void serializeWithLengthPrefix(OutputStream output, Object data) throws SerializationException {
 
@@ -48,6 +65,15 @@ public class JsonSerializer extends Serializer {
         }
     }
 
+    /**
+     * Reads serialized data from a stream and converts it to an object of a specified type. This
+     * method to be used if the stream only contains one object.
+     * @param input Stream contains serialized data
+     * @param type class of the extracting object
+     * @param <T> type of the extracting object
+     * @return an instance of {@link T}
+     * @throws SerializationException throws if object could not be extracted from the stream
+     */
     @Override
     public <T> T deserialize(InputStream input, Class<T> type) throws SerializationException {
 
@@ -59,6 +85,15 @@ public class JsonSerializer extends Serializer {
         }
     }
 
+    /**
+     * Reads serialized data with length prefix from a stream and converts it to an object of a
+     * specified type. This method to be used if the stream contains more than one object.
+     * @param input Stream contains serialized data
+     * @param type class of the extracting object
+     * @param <T> type of the extracting object
+     * @return an instance of {@link T}
+     * @throws SerializationException throws if object could not be extracted from the stream
+     */
     @Override
     public <T> T deserializeWithLengthPrefix(InputStream input, Class<T> type) throws SerializationException {
 

@@ -53,7 +53,7 @@ public class CacheEntryOperator<TIndex, TData> {
                 try {
                     long savingVersion = entry.version;
 
-                    if (entry.save()) {
+                    if (entry._save()) {
                         synchronized (pendingEntries) {
                             if (pendingEntries.get(index) == entry && entry.version == savingVersion)
                                 pendingEntries.remove(index);
