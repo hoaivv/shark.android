@@ -1,70 +1,83 @@
 package shark.runtime;
 
-import java.util.LinkedList;
-
 import shark.delegates.Action1;
 import shark.delegates.Function1;
 
 /**
- * Describes a continuous asynchronous operation
+ * Operates continuous asynchronous operation
  * @param <T> type of operation result
  */
 public final class Promise<T> {
 
-    LinkedList<T> results = new LinkedList<>();
-    Action1<T> callback = null;
-
+    private T result = null;
+    private Action1<T> callback = null;
+    private boolean resolverAllocated = false;
+    private boolean resultAvailable = false;
 
     /**
-     * Notifies that the operation is completed
-     * @param data operation result
+     * Gets resolver of current promise. This method could only be invoked once so that only the
+     * creator of the promise has access to its resolver
+     *
+     * @return resolver of current promise
      */
-    public final void resolve(final T data){
+    public static <T> Action1<T> getResolver(Promise<T> promise) {
 
-        synchronized (this) {
-            if (callback == null) {
-                results.add(data);
-            }
-            else {
-                callback.run(data);
-            }
+        synchronized (promise) {
+            if (promise.resolverAllocated) return null;
+            promise.resolverAllocated = true;
         }
+
+        return new Action1<T>() {
+            @Override
+            public void run(T arg) {
+
+                synchronized (promise) {
+
+                    if (promise.resultAvailable) return;
+
+                    promise.resultAvailable = true;
+                    promise.result = arg;
+
+                    if (promise.callback != null) {
+                        promise.callback.run(promise.result);
+                    }
+                }
+            }
+        };
     }
 
     /**
      * Creates new instance of Promise
      */
-    public Promise(){
+    public Promise() {
     }
 
     /**
      * Creates new instance of Promise, which already completed
+     *
      * @param data operation result
      */
     public Promise(T data) {
-        resolve(data);
+        Promise.getResolver(this).run(data);
     }
 
     /**
      * Gets result of the operation. This method will block the running thread until the operation
      * is completed
+     *
      * @return operation result
+     * @exception InterruptedException throws if the calling thread is interrupted before operation
+     * is completed
      */
-    public final T result() {
+    public final T result() throws InterruptedException {
 
-        try {
+        while (true) {
 
-            while (true) {
-
-                synchronized (this) {
-                    if (!results.isEmpty()) return results.pop();
-                }
-
-                Thread.sleep(10);
+            synchronized (this) {
+                if (resultAvailable) return result;
             }
-        }
-        catch (InterruptedException e){
-            return null;
+
+            Thread.currentThread().join(10);
         }
     }
 
@@ -76,7 +89,7 @@ public final class Promise<T> {
 
         synchronized (this) {
             callback = task;
-            if (task != null) while (!results.isEmpty()) task.run(results.pop());
+            if (task != null && resultAvailable) task.run(result);
         }
     }
 
@@ -91,13 +104,13 @@ public final class Promise<T> {
 
         synchronized (this) {
 
-            final Promise<R> promise = new Promise<R>();
+            Promise<R> promise = new Promise<R>();
+            Action1<R> resolver = Promise.getResolver(promise);
 
             if (task != null) {
 
-                callback = data -> promise.resolve(task.run(data));
-
-                while (!results.isEmpty()) callback.run(results.pop());
+                callback = data -> resolver.run(task.run(data));
+                if (resultAvailable) callback.run(result);
             }
             else {
                 callback = null;

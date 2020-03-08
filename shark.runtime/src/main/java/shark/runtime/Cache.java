@@ -9,8 +9,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import shark.delegates.Action1;
-import shark.io.primitive;
 import shark.io.File;
+import shark.io.primitive;
+import shark.runtime.events.ActionEvent;
 import shark.runtime.serialization.Serializer;
 import shark.utils.Log;
 
@@ -31,20 +32,24 @@ public class Cache<TIndex, TData> {
     private HashMap<TIndex, Object> entries = new HashMap<>();
     private HashMap<TIndex, Long> entryFileIndexes = new HashMap<>();
     private HashMap<TIndex, WeakReference<CacheEntry<TIndex, TData>>> unsettled = new HashMap<>();
+    private HashMap<Long, CacheEntry<TIndex, TData>> pendingEntries = new HashMap<>();
 
     private long currentFileIndex = 0;
     private Long lastEntryModifiedUtc = null;
     private CachingMode mode;
 
-    private Class<TIndex> indexClass;
-    private Class<TData> dataClass;
+    Class<TIndex> _indexClass;
+    Class<TData> _dataClass;
 
-    private Cache(String key, final Class<TIndex> index, final Class<TData> data) {
+    private CacheEntry<TIndex, TData>[] arraySample;
+
+    private Cache(String key, final Class<TIndex> index, final Class<TData> data, CacheEntry<TIndex, TData>... sample) {
 
         instances.put(key, this);
 
-        indexClass = index;
-        dataClass = data;
+        arraySample = sample;
+        _indexClass = index;
+        _dataClass = data;
 
         identifer = CacheController.allocate(index, data);
 
@@ -74,7 +79,7 @@ public class Cache<TIndex, TData> {
 
                 try {
                     long fileIndex = Long.parseLong(file.split("\\.")[0]);
-                    CacheEntry<TIndex, TData> entry = CacheEntry._of(indexClass, dataClass)._get(fileIndex);
+                    CacheEntry<TIndex, TData> entry = new CacheEntry<>(this, fileIndex);
 
                     if (entry._load()) {
                         switch (mode) {
@@ -107,8 +112,6 @@ public class Cache<TIndex, TData> {
                 }
                 catch (IOException e) {
                 }
-                catch (InterruptedException e) {
-                }
             }
         }
 
@@ -132,52 +135,15 @@ public class Cache<TIndex, TData> {
                 }
             });
 
-            CacheController.onCommitChangesToStorage.add(() -> _commitChangesToStorage());
-            CacheEntry._of(indexClass, dataClass).onEntryModified.add(arg -> _entryModified(arg));
+            CacheController.onCommitChangesToStorage.add(() -> commitCacheChangesToStorage());
+            CacheController.onCommitChangesToStorage.add(() -> commitEntryChangesToStorage());
         } catch (InterruptedException e) {
-        }
-    }
-
-    private void _entryModified(CacheEntryModifiedEventArgs<TIndex, TData> arg) {
-
-        try {
-
-            switch (arg.getAction()) {
-                case Create:
-
-                    synchronized (entries) {
-                        switch (mode) {
-                            case Static:
-                                entries.put(arg.getEntry().getIndex(), arg.getEntry());
-                                break;
-
-                            default:
-                                entries.put(arg.getEntry().getIndex(), new WeakReference<CacheEntry<TIndex, TData>>(arg.getEntry()));
-                                break;
-                        }
-
-                        entryFileIndexes.put(arg.getEntry().getIndex(), arg.getEntry().getFileIndex());
-                        unsettled.remove(arg.getEntry().getIndex());
-                    }
-
-                    break;
-
-                case Delete:
-
-                    synchronized (entries) {
-                        entries.remove(arg.getEntry().getIndex());
-                        entryFileIndexes.remove(arg.getEntry().getIndex());
-                    }
-
-                    break;
-            }
-        } catch (IOException e) {
         }
     }
 
     private Long storedLastModified = null;
 
-    private boolean _commitChangesToStorage() {
+    private boolean commitCacheChangesToStorage() {
 
         Long current = lastEntryModifiedUtc;
 
@@ -213,32 +179,164 @@ public class Cache<TIndex, TData> {
         return true;
     }
 
-    void _removeUnsettled(TIndex index) {
+    private boolean commitEntryChangesToStorage() {
+        Long[] indexes;
+
+        synchronized (pendingEntries) {
+            indexes = pendingEntries.keySet().toArray(new Long[0]);
+        }
+
+        for (long index : indexes) {
+
+            CacheEntry<TIndex, TData> entry;
+            synchronized (pendingEntries) {
+                entry = pendingEntries.get(index);
+            }
+
+            if (entry == null) {
+                try {
+                    File file = new File(getCacheDirectory() + "/" + index + ".data");
+
+                    if (file.exists() && file.isFile() && !file.delete()) break;
+                    synchronized (pendingEntries) {
+                        if (pendingEntries.get(index) == null) pendingEntries.remove(index);
+                    }
+                } catch (Exception e) {
+                    break;
+                }
+            } else {
+                try {
+                    long savingVersion = entry.version;
+
+                    if (entry._save()) {
+                        synchronized (pendingEntries) {
+                            if (pendingEntries.get(index) == entry && entry.version == savingVersion)
+                                pendingEntries.remove(index);
+                        }
+                    } else {
+                        break;
+                    }
+                } catch (Exception e) {
+                    break;
+                }
+            }
+        }
+
+        synchronized (pendingEntries) {
+            return pendingEntries.size() < 1;
+        }
+    }
+
+    /**
+     * Marks an entry as freed and could be collected by GC. Cache entry instances, allocated but
+     * not saved could be freed.
+     * @param index index of an entry to be freed
+     */
+    void _free(TIndex index) {
         synchronized (entries) {
             unsettled.remove(index);
         }
     }
 
     /**
-     * Accesses a specified cache type. This method will block the calling thread until the
-     * {@link shark.Framework} is started
+     * Notifies that a modification had been made to an entry and directs the cache to commit the
+     * modification to storage.
+     * @param entry modified entry
+     * @param action action committed
+     * @param actionStampUtc timestamp of the action
+     */
+    void _modify(CacheEntry<TIndex, TData> entry, CacheEntryAction action, long actionStampUtc) {
+
+        setLastEntryModifiedUtc(actionStampUtc);
+
+        synchronized (pendingEntries) {
+            CacheController.setPersistent(false);
+            pendingEntries.put(entry.getFileIndex(), action == CacheEntryAction.Delete ? null : entry);
+        }
+
+        try {
+
+            switch (action) {
+                case Create:
+
+                    synchronized (entries) {
+                        switch (mode) {
+                            case Static:
+                                entries.put(entry.getIndex(), entry);
+                                break;
+
+                            default:
+                                entries.put(entry.getIndex(), new WeakReference<>(entry));
+                                break;
+                        }
+
+                        entryFileIndexes.put(entry.getIndex(), entry.getFileIndex());
+                        unsettled.remove(entry.getIndex());
+                    }
+
+                    break;
+
+                case Delete:
+
+                    synchronized (entries) {
+                        entries.remove(entry.getIndex());
+                        entryFileIndexes.remove(entry.getIndex());
+                    }
+
+                    break;
+            }
+        } catch (IOException e) {
+        }
+
+        onEntryModifiedInvoker.run(new CacheEntryModifiedEventArgs(entry, action));
+    }
+
+    /**
+     * Triggers whenever a cache entry of current cache type is created/edited/deleted
+     */
+    public final ActionEvent<CacheEntryModifiedEventArgs<TIndex, TData>> onEntryModified = new ActionEvent<>();
+    private Action1<CacheEntryModifiedEventArgs<TIndex, TData>> onEntryModifiedInvoker = ActionEvent.getInvoker(onEntryModified);
+
+    /**
+     * Gets a specified type of cache.
      * @param index class of the cache index
      * @param data class of the cache data
      * @param <TIndex> type of cache index
      * @param <TData> type of cache data
-     * @return instance of {@link Cache} which provides access to the specified cache type
-     * @throws InterruptedException throws if the calling thread is interrupted before the
-     * {@link shark.Framework} is started
+     * @return instance of {@link Cache} via {@link Promise} which provides access to the specified
+     * cache type
      */
-    public static <TIndex, TData> Cache<TIndex, TData> of(Class<TIndex> index, Class<TData> data) throws InterruptedException {
+    public static <TIndex, TData> Promise<Cache<TIndex, TData>> get(Class<TIndex> index, Class<TData> data) {
 
         String key = "index:{" + index.getName() + "}, data:{" + data.getName() + "}";
 
-        Cache<TIndex, TData> result;
+        Promise<Cache<TIndex, TData>> promise = new Promise<>();
+        Action1<Cache<TIndex, TData>> resolver = Promise.getResolver(promise);
 
-        synchronized (instances) {
+        try {
+            return promise;
+        }
+        finally {
 
-            return  instances.containsKey(key) ? instances.get(key) : new Cache<TIndex, TData>(key, index, data);
+            boolean pass = false;
+
+            synchronized (instances) {
+                if (instances.containsKey(key)) {
+                    resolver.run(instances.get(key));
+                    pass = true;
+                }
+            }
+
+            if (!pass) {
+
+                Parallel.queue(() -> {
+
+                    synchronized (instances) {
+
+                        resolver.run(instances.containsKey(key) ? instances.get(key) : new Cache<TIndex, TData>(key, index, data));
+                    }
+                });
+            }
         }
     }
 
@@ -309,7 +407,7 @@ public class Cache<TIndex, TData> {
         return lastEntryModifiedUtc == null ? 0 : (long) lastEntryModifiedUtc;
     }
 
-    void setLastEntryModifiedUtc(long value) {
+    private void setLastEntryModifiedUtc(long value) {
         synchronized (entries) {
             if (isSpaceAllocated() && (lastEntryModifiedUtc == null || lastEntryModifiedUtc < value)) {
                 CacheController.setPersistent(false);
@@ -335,7 +433,7 @@ public class Cache<TIndex, TData> {
                 results.add(entry);
             }
         }
-        return results.toArray(CacheEntry._of(indexClass, dataClass)._sample);
+        return results.toArray(arraySample);
     }
 
     /**
@@ -344,7 +442,7 @@ public class Cache<TIndex, TData> {
      */
     public TIndex[] indexes() {
         synchronized (entries) {
-            return entries.keySet().toArray((TIndex[])Array.newInstance(indexClass, 0));
+            return entries.keySet().toArray((TIndex[])Array.newInstance(_indexClass, 0));
         }
     }
 
@@ -415,7 +513,7 @@ public class Cache<TIndex, TData> {
      * @throws InterruptedException throws if the calling thread is interrupted before
      * {@link shark.Framework} is started
      */
-    public CacheEntry<TIndex, TData> getOrCreate(TIndex index) throws InterruptedException {
+    public CacheEntry<TIndex, TData> getOrCreate(TIndex index) {
 
         if (index == null) throw new IllegalArgumentException("index is null");
         if (!isSpaceAllocated()) throw new UnsupportedOperationException("caching space is not allocated");
@@ -431,7 +529,7 @@ public class Cache<TIndex, TData> {
                         CacheEntry<TIndex, TData> entry = reference.get();
 
                         if (entry == null) {
-                            entry = CacheEntry._of(indexClass, dataClass)._get(entryFileIndexes.get(index));
+                            entry = new CacheEntry<>(this, entryFileIndexes.get(index));
                             entries.put(index, new WeakReference<CacheEntry<TIndex, TData>>(entry));
                         }
 
@@ -445,7 +543,7 @@ public class Cache<TIndex, TData> {
 
                 if (entry == null) {
                     currentFileIndex++;
-                    entry = CacheEntry._of(indexClass, dataClass)._create(index, currentFileIndex);
+                    entry = new CacheEntry<>(this, index, currentFileIndex);
                     unsettled.put(index, new WeakReference<CacheEntry<TIndex, TData>>(entry));
                 }
 
@@ -481,7 +579,7 @@ public class Cache<TIndex, TData> {
                     CacheEntry<TIndex, TData> entry = reference.get();
 
                     if (entry == null) {
-                        entry = CacheEntry._of(indexClass, dataClass)._get(entryFileIndexes.get(index));
+                        entry = new CacheEntry<>(this, entryFileIndexes.get(index));
                         entries.put(index, new WeakReference<CacheEntry<TIndex, TData>>(entry));
                     }
 
@@ -508,7 +606,7 @@ public class Cache<TIndex, TData> {
             if (entry != null) buffer.add(entry);
         }
 
-        return buffer.toArray(CacheEntry._of(indexClass, dataClass)._sample);
+        return buffer.toArray(arraySample);
 
     }
 
@@ -626,7 +724,7 @@ public class Cache<TIndex, TData> {
      * @throws InterruptedException throws if the calling thread is interrupted before
      * {@link shark.Framework} is started
      */
-    public boolean update(TIndex index, TData data, long lastModifiedUtc) throws InterruptedException {
+    public boolean update(TIndex index, TData data, long lastModifiedUtc) {
 
         if (index == null) return false;
         CacheEntry<TIndex, TData> entry = getOrCreate(index);
@@ -642,7 +740,7 @@ public class Cache<TIndex, TData> {
      * @throws InterruptedException throws if the calling thread is interrupted before
      * {@link shark.Framework} is started
      */
-    public boolean update(TIndex index, TData data) throws InterruptedException {
+    public boolean update(TIndex index, TData data) {
         return update(index, data, System.currentTimeMillis());
     }
 

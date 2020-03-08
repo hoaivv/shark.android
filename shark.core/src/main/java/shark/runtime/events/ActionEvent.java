@@ -14,6 +14,7 @@ import shark.delegates.Action1;
 public final class ActionEvent<T> {
 
     private HashSet<Action1<T>> handlers = new HashSet<>();
+    private boolean invokerAllocated = false;
 
     /**
      * Indicates whether the event is listened or not
@@ -53,30 +54,29 @@ public final class ActionEvent<T> {
         }
     }
 
-    private Object owner;
-
     /**
      * Create an event.
-     * @param owner owner of the event. This object is used to protect the event from illegal access
      */
-    public ActionEvent(Object owner) {
-
-        this.owner = owner;
+    public ActionEvent() {
     }
 
     /**
-     * Invokes the event listeners.
-     * @param owner owner of the event.
-     * @param eventArgs argument to be passed to event listeners.
-     * @throws IllegalAccessException throws if the provided owner is different from the owner
-     * provided when the event is created.
+     * Gets the invoker of the event. This method could only be called once per instance to ensure
+     * only owner of the event has access to its invoker
+     * @param event event, invoker of which to be returned
+     * @param <T> type of event argument
+     * @return invoker of the event if on first call; otherwise null
      */
-    public final void invoke(Object owner, T eventArgs) throws IllegalAccessException {
-
-        if (this.owner != owner) throw new IllegalAccessException("An event could only be invoked by its owner class.");
-
-        synchronized (handlers) {
-            for (Action1<T> handler : handlers) handler.run(eventArgs);
+    public static <T> Action1<T> getInvoker(ActionEvent<T> event) {
+        synchronized (event) {
+            if (event.invokerAllocated) return null;
+            event.invokerAllocated = true;
         }
+
+        return arg -> {
+            synchronized (event.handlers) {
+                for (Action1<T> handler : event.handlers) handler.run(arg);
+            }
+        };
     }
 }

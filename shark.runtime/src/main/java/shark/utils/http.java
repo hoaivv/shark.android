@@ -9,16 +9,27 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
 
+import shark.delegates.Action1;
 import shark.runtime.Promise;
 
 /**
- * Provides access to resources, served via HTTP protocol
+ * Provides fast access to resources, served via HTTP/HTTPS protocol. This class does not allow its
+ * instances to be created. Use static methods of this class to make requests.
+ *
+ * @see #at(String)
+ * @see #get(String)
+ * @see #get(String, Class)
+ * @see #post(String, String, byte[])
+ * @see #post(String, String, byte[], Class)
+ * @see #post(String, String, String)
+ * @see #post(String, String, String, Class)
+ * @see #post(String, Object)
+ * @see #post(String, Object, Class)
  */
 public final class http {
 
@@ -27,7 +38,26 @@ public final class http {
     private static http singleton = new http();
 
     /**
-     * Descrives a HTTP request
+     * If this property is {@code true}, {@code https://} will be added to target URL when no
+     * protocol is specified in it.
+     * If this property is {@code false}, {@code http://} will be be
+     * added to target URL when no protocol is specified in it.
+     * By default, this value is {@code false}
+     */
+    public static boolean useHttpsByDefault = false;
+
+    /**
+     * Describes a HTTP request. This class does not allow its instance to be created directly. Use
+     * {@link #at(String)} to generate instance of this class. Methods of this class allow request
+     * customization.
+     *
+     * @see #at(String)
+     * @see #header(String, String)
+     * @see #body(byte[])
+     * @see #body(String, byte[])
+     * @see #body(Object)
+     * @see #send()
+     * @see #expect(Class)
      */
     public final class Request {
 
@@ -38,17 +68,21 @@ public final class http {
 
         /**
          * Creates a request
-         * @param url Target of the request
+         * @param url Target of the request. If no protocol is specified in this value the protocol
+         *            will be added according to value of {@link #useHttpsByDefault}
          */
         private Request(String url) {
             this.method = "GET";
 
-            if (!url.startsWith("http://") && !url.startsWith("https://")) url = "http://" + url;
+            if (!url.startsWith("http://") && !url.startsWith("https://"))
+                url = (useHttpsByDefault ? "https://" : "http://") + url;
+
             this.url = url;
         }
 
         /**
-         * Sets request method
+         * Sets request method. If request method is not defined by calling this method, by default
+         * request method is set to GET.
          * @param method HTTP method to be used, could be GET or HEAD or POST or PUT or DELETE
          *               or CONNECT or OPTIONS or TRACE or PATCH
          * @return current request object
@@ -114,25 +148,105 @@ public final class http {
 
         /**
          * Sends current HTTP request and expects response of a specified type. If the expecting
-         * type is {@link Response} the HTTP response will be return otherwise response body will be
-         * treated as a json string and the object of expecting type will be extracted from it.
+         * type is {@link Response} the HTTP response will be returned otherwise response body will
+         * be treated as a json string and the object of expecting type will be extracted from it.
          * @param expect expecting type of response.
          * @return instance of the expecting type via {@link Promise} if succeed; otherwise null via
          * {@link Promise}.
          */
         public <T> Promise<T> expect(Class<T> expect) {
-            return expect == Response.class ? http.send(this).then(response -> (T)response) : http.send(this, expect);
+
+            return send().then(response -> {
+
+                try {
+                    return expect == Response.class ? (T) response : response != null && response.getStatus() == 200 ? response.getObject(expect).result() : null;
+                }
+                catch (Exception e) {
+                    return null;
+                }
+            });
+        }
+
+        /**
+         * Sends current HTTP request
+         * @return instance of {@link Response} via {@link Promise} if succeed; otherwise null via
+         * {@link Promise}
+         */
+        public Promise<Response> send() {
+
+            Promise<Response> promise = new Promise<>();
+            Action1<Response> resolver = Promise.getResolver(promise);
+
+            Runnable commit = () -> {
+
+                URL target;
+
+                try {
+                    target = new URL(url);
+                } catch (MalformedURLException e) {
+                    resolver.run(null);
+                    return;
+                }
+
+                HttpURLConnection connection = null;
+                OutputStream stream = null;
+                Response response = null;
+
+                try {
+                    connection = (HttpURLConnection) target.openConnection();
+
+                    connection.setRequestMethod(method);
+
+                    for (String key : headers.keySet()) {
+                        connection.setRequestProperty(key, headers.get(key));
+                    }
+
+                    if (body != null && body.length > 0) {
+
+                        connection.setDoOutput(true);
+                        stream = connection.getOutputStream();
+
+                        stream.write(body);
+                        stream.flush();
+                        stream.close();
+                        stream = null;
+                    }
+
+                    response = new http.Response(connection);
+                } catch (Exception ex) {
+
+                    try {
+                        if (stream != null) stream.close();
+                        if (connection != null) connection.disconnect();
+                    } catch (IOException io) {
+                    }
+                }
+
+                resolver.run(response);
+            };
+
+            if (Looper.getMainLooper() == Looper.myLooper()) {
+                Thread thread = new Thread(commit);
+                thread.setDaemon(true);
+                thread.start();
+            }
+            else {
+                commit.run();
+            }
+
+            return promise;
         }
     }
 
     /**
-     * Describes a HTTP response
+     * Describes a HTTP response. Instances of this class will be generated when a HTTP/HTTPS
+     * requests are made and their responses become available.
      */
     public final class Response implements Closeable {
 
         HttpURLConnection connection = null;
 
-        Response(HttpURLConnection connection) throws IllegalArgumentException {
+        private Response(HttpURLConnection connection) throws IllegalArgumentException {
 
             if (connection == null) throw new IllegalArgumentException();
             this.connection = connection;
@@ -164,11 +278,12 @@ public final class http {
          */
         public <T> Promise<T> getObject(Class<T> type) {
 
-            final Promise<T> result = new Promise<>();
+            Promise<T> promise = new Promise<>();
+            Action1<T> resolver = Promise.getResolver(promise);
 
             if (connection == null || type == null) {
-                result.resolve(null);
-                return result;
+                resolver.run(null);
+                return promise;
             }
 
             Runnable commit = () -> {
@@ -178,7 +293,7 @@ public final class http {
                 try {
                     reader = new InputStreamReader(connection.getInputStream());
 
-                    result.resolve((T) new Gson().fromJson(reader, type));
+                    resolver.run((T) new Gson().fromJson(reader, type));
                 } catch (Exception e1) {
 
                     try {
@@ -186,7 +301,7 @@ public final class http {
                     } catch (Exception e2) {
                     }
 
-                    result.resolve(null);
+                    resolver.run(null);
                 } finally {
                     close();
                 }
@@ -201,7 +316,7 @@ public final class http {
                 commit.run();
             }
 
-            return result;
+            return promise;
         }
 
         /**
@@ -210,11 +325,12 @@ public final class http {
          */
         public Promise<byte[]> getBytes() {
 
-            final Promise<byte[]> result = new Promise<>();
+            Promise<byte[]> promise = new Promise<>();
+            Action1<byte[]> resolver = Promise.getResolver(promise);
 
             if (connection == null) {
-                result.resolve(null);
-                return  result;
+                resolver.run(null);
+                return  promise;
             }
 
             Runnable commit = () -> {
@@ -233,7 +349,7 @@ public final class http {
                         if (count < data.length) Thread.sleep(10);
                     }
 
-                    result.resolve(data);
+                    resolver.run(data);
                 } catch (Exception e1) {
 
                     try {
@@ -241,7 +357,7 @@ public final class http {
                     } catch (Exception e2) {
                     }
 
-                    result.resolve(null);
+                    resolver.run(null);
                 } finally {
                     close();
                 }
@@ -258,7 +374,7 @@ public final class http {
                 commit.run();
             }
 
-            return result;
+            return promise;
         }
 
         /**
@@ -278,180 +394,13 @@ public final class http {
         }
     }
 
-    private Promise<Response> _get(String url) {
-
-        final Promise<Response> promise = new Promise<>();
-
-        Runnable commit =  () -> {
-
-            URL target;
-
-            try {
-                target = new URL(url);
-            } catch (MalformedURLException e) {
-
-                promise.resolve(null);
-                return;
-            }
-
-            Response response = null;
-
-            try {
-                response = new http.Response((HttpURLConnection) target.openConnection());
-            } catch (Exception e) {
-            }
-
-            promise.resolve(response);
-        };
-
-        if (Looper.myLooper() == Looper.getMainLooper()) {
-            Thread thread = new Thread(commit);
-            thread.setDaemon(true);
-            thread.start();
-        }
-        else {
-            commit.run();
-        }
-
-        return promise;
-    }
-
-    private Promise<Response> _post(String url, String contentType, byte[] data) {
-
-        Promise<Response> promise = new Promise<Response>();
-
-        Runnable commit = () -> {
-
-            URL target;
-
-            try {
-                target = new URL(url);
-            } catch (MalformedURLException e) {
-                promise.resolve(null);
-                return;
-            }
-
-            if (contentType == null || contentType.length() == 0 || data == null) {
-                promise.resolve(null);
-                return;
-            }
-
-            HttpURLConnection connection = null;
-            OutputStream stream = null;
-            Response response = null;
-
-            try {
-                connection = (HttpURLConnection) target.openConnection();
-
-                connection.setRequestMethod("POST");
-                connection.setRequestProperty("Content-Type", contentType);
-
-                if (data.length > 0) {
-                    connection.setDoOutput(true);
-                    stream = connection.getOutputStream();
-
-                    stream.write(data);
-                    stream.flush();
-                    stream.close();
-                    stream = null;
-                }
-
-                response = new http.Response(connection);
-            } catch (Exception ex) {
-
-                try {
-                    if (stream != null) stream.close();
-                    if (connection != null) connection.disconnect();
-                } catch (IOException io) {
-                }
-            }
-
-            promise.resolve(response);
-        };
-
-        if (Looper.getMainLooper() == Looper.myLooper()) {
-            Thread thread = new Thread(commit);
-            thread.setDaemon(true);
-            thread.start();
-        }
-        else {
-            commit.run();
-        }
-
-        return promise;
-    }
-
-    private Promise<Response> _send(Request request) {
-
-        Promise<Response> promise = new Promise<Response>();
-
-        Runnable commit = () -> {
-
-            URL target;
-
-            try {
-                target = new URL(request.url);
-            } catch (MalformedURLException e) {
-                promise.resolve(null);
-                return;
-            }
-
-            HttpURLConnection connection = null;
-            OutputStream stream = null;
-            Response response = null;
-
-            try {
-                connection = (HttpURLConnection) target.openConnection();
-
-                connection.setRequestMethod(request.method);
-
-                for (String key : request.headers.keySet()) {
-                    connection.setRequestProperty(key, request.headers.get(key));
-                }
-
-                if (request.body != null && request.body.length > 0) {
-
-                    connection.setDoOutput(true);
-                    stream = connection.getOutputStream();
-
-                    stream.write(request.body);
-                    stream.flush();
-                    stream.close();
-                    stream = null;
-                }
-
-                response = new http.Response(connection);
-            } catch (Exception ex) {
-
-                try {
-                    if (stream != null) stream.close();
-                    if (connection != null) connection.disconnect();
-                } catch (IOException io) {
-                }
-            }
-
-            promise.resolve(response);
-        };
-
-        if (Looper.getMainLooper() == Looper.myLooper()) {
-            Thread thread = new Thread(commit);
-            thread.setDaemon(true);
-            thread.start();
-        }
-        else {
-            commit.run();
-        }
-
-        return promise;
-    }
-
     /**
      * Makes a HTTP request to a specified URL using GET method
      * @param url URL to be requested
      * @return HTTP response via {@link Promise}
      */
     public static Promise<Response> get(String url) {
-        return singleton._get(url);
+        return at(url).method("GET").send();
     }
 
     /**
@@ -464,15 +413,7 @@ public final class http {
      * {@link Promise}
      */
     public static <T> Promise<T> get(String url, Class<T> expect) {
-
-        return get(url).then(response -> {
-           try {
-               return response != null && response.getStatus() == 200 ? response.getObject(expect).result() : null;
-           }
-           catch (Exception e) {
-               return null;
-           }
-        });
+        return at(url).method("GET").expect(expect);
     }
 
     /**
@@ -483,7 +424,7 @@ public final class http {
      * @return HTTP response via {@link Promise}
      */
     public static Promise<Response> post(String url, String contentType, byte[] data) {
-        return singleton._post(url, contentType, data);
+        return at(url).method("POST").body(contentType, data).send();
     }
 
     /**
@@ -499,13 +440,7 @@ public final class http {
      * {@link Promise}
      */
     public  static <T> Promise<T> post(String url, String contentType, byte[] data, Class<T> type) {
-        return post(url, contentType, data).then(response -> {
-            try {
-                return response != null && response.getStatus() == 200 ? response.getObject(type).result() : null;
-            } catch (Exception e) {
-                return null;
-            }
-        });
+        return at(url).method("POST").body(contentType, data).expect(type);
     }
 
     /**
@@ -516,13 +451,7 @@ public final class http {
      * @return HTTP response via {@link Promise}
      */
     public static Promise<Response> post(String url, Object obj) {
-
-        try {
-            return post(url, "application/json", new Gson().toJson(obj).getBytes("UTF-8"));
-        }
-        catch (UnsupportedEncodingException ex){
-            return new Promise<>(null);
-        }
+        return at(url).method("POST").body(obj).send();
     }
 
     /**
@@ -537,14 +466,7 @@ public final class http {
      * {@link Promise}
      */
     public static <T> Promise<T> post(String url, Object obj, Class<T> expect) {
-        return post(url, obj).then(response -> {
-           try{
-               return response != null && response.getStatus() == 200 ? response.getObject(expect).result() : null;
-           }
-           catch (Exception e) {
-               return null;
-           }
-        });
+        return at(url).method("POST").body(obj).expect(expect);
     }
 
     /**
@@ -555,14 +477,7 @@ public final class http {
      * @return HTTP response via {@link Promise}
      */
     public static Promise<Response> post(String url, String contentType, String data) {
-
-        if (data == null) return new Promise<Response>(null);
-        try {
-            return post(url, contentType, data.getBytes("UTF-8"));
-        }
-        catch (UnsupportedEncodingException ex){
-            return new Promise<>(null);
-        }
+        return at(url).method("POST").body(contentType, data.getBytes()).send();
     }
 
     /**
@@ -578,53 +493,16 @@ public final class http {
      * {@link Promise}
      */
     public static <T> Promise<T> post(String url, String contentType, String data, Class<T> expect) {
-
-        return post(url, contentType, data).then(response -> {
-            try {
-                return response != null && response.getStatus() == 200 ? response.getObject(expect).result() : null;
-            }
-            catch (Exception e) {
-                return null;
-            }
-        });
+        return at(url).method("POST").body(contentType, data.getBytes()).expect(expect);
     }
 
     /**
      * Creates a HTTP request
-     * @param url Target of the request
+     * @param url Target of the request. If no protocol is specified in this value the protocol will
+     *            be added according to value of {@link #useHttpsByDefault}
      * @return an instance of {@link Request}
      */
     public static Request at(String url) {
         return singleton.new Request(url);
-    }
-
-    /**
-     * Sends a HTTP request
-     * @param request request to be sent
-     * @return HTTP Response via {@link Promise}
-     */
-    public static Promise<Response> send(Request request) {
-        return singleton._send(request);
-    }
-
-    /**
-     * Sends a HTTP request and converts response body from a json string to an object of a
-     * specified type.
-     * @param request request to be sent
-     * @param expect class of the object to be extracted from response body
-     * @param <T> type of the object to be extracted from response body
-     * @return instance of the specified type via {@link Promise} if succeed; otherwise null via
-     * {@link Promise}
-     */
-    public static <T> Promise<T> send(Request request, Class<T> expect) {
-
-        return send(request).then(response -> {
-            try {
-                return response != null && response.getStatus() == 200 ? response.getObject(expect).result() : null;
-            }
-            catch (Exception e) {
-                return null;
-            }
-        });
     }
 }

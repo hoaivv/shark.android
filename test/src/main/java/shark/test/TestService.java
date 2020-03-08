@@ -10,12 +10,6 @@ import shark.components.SharkServiceAlternativeName;
 public class TestService extends ServiceHandler<String, String> {
 
     @Override
-    public Class<String> getDataClass() { return String.class; }
-
-    @Override
-    public Class<String> getReturnClass() { return String.class; }
-
-    @Override
     protected String process(ServiceRequestInfo<String> request) {
         return "Hello " + request.getData();
     }

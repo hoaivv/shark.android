@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.webkit.WebView;
 
+import shark.Framework;
 import shark.utils.http;
 
 public class Main extends Activity {
@@ -28,6 +29,18 @@ public class Main extends Activity {
 
         setContentView(view);
 
-        SongDTO[] songs = http.at("api.ahacafe.vn/music/songs").expect(SongDTO[].class).result();
+        TestService test = new TestService();
+
+        Framework.start(this);
+
+
+        System.out.println("test");
+
+
+        try {
+
+            SongDTO[] songs = http.at("api.ahacafe.vn/music/songs").method("S").expect(SongDTO[].class).result();
+        } catch (Exception e) {
+        }
     }
 }

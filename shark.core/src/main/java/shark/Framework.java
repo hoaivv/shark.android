@@ -10,6 +10,8 @@ import java.util.HashSet;
 import shark.components.IAutomation;
 import shark.components.ISharkComponent;
 import shark.components.ServiceHandler;
+import shark.delegates.Action;
+import shark.delegates.Action1;
 import shark.io.File;
 import shark.runtime.Automations;
 import shark.runtime.Services;
@@ -58,17 +60,20 @@ public final class Framework {
     /**
      * Event to be triggered when a log is written using Shark Logging System
      */
-    public static ActionEvent<LogData> onLogged = new ActionEvent<>(signature);
+    public final static ActionEvent<LogData> onLogged = new ActionEvent<>();
+    private static Action1<LogData> onLoggedInvoker = ActionEvent.getInvoker(onLogged);
 
     /**
      * Event to be triggered when the framework is started
      */
-    public static ActionTrigger onStarted = new ActionTrigger(signature);
+    public final static ActionTrigger onStarted = new ActionTrigger();
+    private static Action onStartedInvoker = ActionTrigger.getInvoker(onStarted);
 
     /**
      * Event to be triggered when the framework is stopped
      */
-    public static ActionTrigger onStopped = new ActionTrigger(signature);
+    public final static ActionTrigger onStopped = new ActionTrigger();
+    private static Action onStoppedInvoker = ActionTrigger.getInvoker(onStopped);
 
     /**
      * Indicates whether the framework is running or not. The framework is defined as running if
@@ -176,7 +181,7 @@ public final class Framework {
                 if (debug) Log.information(Framework.class, "Shark is started");
 
                 try {
-                    onStarted.invoke(signature);
+                    onStartedInvoker.run();
                 } catch (Exception e) {
                     if (log) Log.error(Framework.class,
                             "Error detected during invocation of event Framework.onStarted",
@@ -275,7 +280,7 @@ public final class Framework {
 
         if (!onLogged.hasHandler() && !writeLogsToFiles) return false;
 
-        try { onLogged.invoke(signature, data); } catch (Exception e) { };
+        try { onLoggedInvoker.run(data); } catch (Exception e) { };
 
         if (!writeLogsToFiles) return true;
 
@@ -354,7 +359,7 @@ public final class Framework {
             }
 
             try {
-                onStopped.invoke(signature);
+                onStoppedInvoker.run();
             } catch (Exception e) {
                 if (log) Log.error(Framework.class,
                         "Error detected during invocation of event Framework.onStopped",

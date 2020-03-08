@@ -3,6 +3,7 @@ package shark.runtime.events;
 import java.util.HashSet;
 
 import shark.delegates.Function;
+import shark.delegates.Function1;
 
 /**
  * Decribes an event which does not provide any information to its listeners and expects return from
@@ -15,6 +16,7 @@ import shark.delegates.Function;
 public final class FunctionTrigger<R> {
 
     private HashSet<Function<R>> handlers = new HashSet<>();
+    private boolean invokerAllocated = false;
 
     /**
      * Indicates whether the event is listened or not
@@ -54,53 +56,45 @@ public final class FunctionTrigger<R> {
         }
     }
 
-    private Object owner;
-
     /**
      * Create an event.
-     * @param owner owner of the event. This object is used to protect the event from illegal access
      */
-    public FunctionTrigger(Object owner) {
-
-        this.owner = owner;
+    public FunctionTrigger() {
     }
 
     /**
-     * Invokes the event listeners and does not care about their returned values.
-     * @param owner owner of the event.
-     * @throws IllegalAccessException throws if the provided owner is different from the owner
-     * provided when the event is created.
+     * Gets invoker of a trigger. This method could only be called once per trigger to ensure only
+     * owner of the trigger has access to its invoker.
+     * @param trigger trigger, invoker of which to be returned
+     * @param <R> type of state returned by trigger handlers
+     * @return invoker of the trigger on the first call; otherwise null
      */
-    public final void invoke(Object owner) throws IllegalAccessException {
+    public static <R> Function1<R[], Boolean> getInvoker(FunctionTrigger<R> trigger) {
 
-        if (this.owner != owner) throw new IllegalAccessException("An event could only be invoked by its owner class.");
-
-        synchronized (handlers) {
-            for (Function<R> handler : handlers) handler.run();
-        }
-    }
-
-    /**
-     * Invokes the event listeners.
-     * @param owner owner of the event.
-     * @param allowedStates expected states to be returned by listeners. Be aware that if no
-     *                      expected states provided the listeners will not be invoked.
-     * @return true if all listener's returned values are expected; otherwise false
-     * @throws IllegalAccessException throws if the provided owner is different from the owner
-     * provided when the event is created.
-     */
-    public final boolean invoke(Object owner, R... allowedStates) throws IllegalAccessException {
-
-        if (this.owner != owner) throw new IllegalAccessException("An event could only be invoked by its owner class.");
-        if (allowedStates == null || allowedStates.length == 0) return false;
-
-        HashSet<R> states = new HashSet<>();
-        for (R state : allowedStates) states.add(state);
-
-        synchronized (handlers) {
-            for (Function<R> handler : handlers) if (!states.contains(handler.run())) return false;
+        synchronized (trigger) {
+            if (trigger.invokerAllocated) return null;
+            trigger.invokerAllocated = true;
         }
 
-        return true;
+        return allowedStates -> {
+            if (allowedStates == null) {
+                synchronized (trigger.handlers) {
+                    for (Function<R> handler : trigger.handlers) handler.run();
+                }
+
+                return true;
+            }
+            if (allowedStates.length == 0) return false;
+
+            HashSet<R> states = new HashSet<>();
+            for (R state : allowedStates) states.add(state);
+
+            synchronized (trigger.handlers) {
+                for (Function<R> handler : trigger.handlers)
+                    if (!states.contains(handler.run())) return false;
+            }
+
+            return true;
+        };
     }
 }

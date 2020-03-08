@@ -3,7 +3,7 @@ package shark.runtime;
 import shark.components.IServiceRequestInfo;
 
 /**
- * Provides information of an executed Shark Service
+ * Describes result of a completed Shark Service execution
  */
 public final class ServiceExecutionResult {
 

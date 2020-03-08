@@ -9,6 +9,9 @@ import shark.components.NotProceedServiceException;
 import shark.components.ServiceException;
 import shark.utils.Log;
 
+/**
+ * Provides access to a registered Shark Service
+ */
 public final class Service {
 
     private class _ExecutionInfo
@@ -47,48 +50,93 @@ public final class Service {
         this.alts = alts;
     }
 
+    /**
+     * Checks whether handler of the service is an instance of a specified class or not
+     * @param test class to be checked
+     * @return true if handler of the service is an instance of the specified class; otherwise false
+     */
     public boolean is(Class<? extends IServiceHandler> test){
 
         return test.isAssignableFrom(handler.getClass());
     }
 
+    /**
+     * Gets class of the service handler
+     * @return class of the service handler
+     */
     public Class<? extends IServiceHandler> getHandlerClass() {
 
         return handler.getClass();
     }
 
+    /**
+     * Gets class of processable data of the service
+     * @return
+     */
     public Class<?> getDataClass() {
         return handler.getDataClass();
     }
 
+    /**
+     * Gets class of response data of the service
+     * @return
+     */
     public Class<?> getReturnClass() {
         return handler.getReturnClass();
     }
 
+    /**
+     * Gets registered name of the service
+     * @return service name
+     */
     public String getName(){
         return name;
     }
 
+    /**
+     * Gets registered identifier of the service
+     * @return service identifier
+     */
     public int getId() {
         return id;
     }
 
+    /**
+     * Gets registered aliases of the service
+     * @return service aliases
+     */
     public String[] getAlternativeNames() {
         return alts;
     }
 
+    /**
+     * Gets the number of time the service is requested
+     * @return number of time the service is requested
+     */
     public long getInvocationCount() {
         return invocationCount;
     }
 
+    /**
+     * Gets the number of time the service is executed
+     * @return number of time the service is executed
+     */
     public long getExecutionCount() {
         return executionCount;
     }
 
+    /**
+     * Gets total execution time (in milliseconds) of the service
+     * @return milliseconds
+     */
     public long getTotalExecutionTime() {
         return totalExecutionTime;
     }
 
+    /**
+     * Gets average execution time (in milliseconds) of the service
+     * @return milliseconds
+     */
     public long getAverageExecutionTime() {
         return executionCount > 0 ? totalExecutionTime / executionCount : 0;
     }
@@ -158,7 +206,14 @@ public final class Service {
         }
     }
 
-    public ServiceExecutionResult process(final IServiceRequestInfo request) throws InterruptedException {
+    /**
+     * Requests the service to process a request
+     * @param request request to be proceed
+     * @return object, provides information of committed request processing operation
+     * @throws InterruptedException throws if the calling thread is interrupted before the operation
+     * is completed
+     */
+    public ServiceExecutionResult process(IServiceRequestInfo request) throws InterruptedException {
 
         ServiceExecutionState result = null;
         invocationCount++;
@@ -197,6 +252,11 @@ public final class Service {
         return new ServiceExecutionResult(result.getResponse(), result.getRequest());
     }
 
+    /**
+     * Requests the service to process a request asynchronously
+     * @param request request to be proceed
+     * @return object, provides information about request processing operation
+     */
     public ServiceExecutionState processAsync(final IServiceRequestInfo request){
 
         invocationCount++;

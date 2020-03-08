@@ -4,8 +4,12 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 
 import shark.Framework;
+import shark.delegates.Action;
 import shark.utils.Log;
 
+/**
+ * Executes tasks and optimizes usage of threads for task execution.
+ */
 public class Operator {
 
     class TaskInfo {
@@ -13,6 +17,12 @@ public class Operator {
         public long stamp;
     }
 
+    /**
+     * Create an operator
+     * @param maxNumberOfThreads maximum number of threads allowed to be created
+     * @param threadCreationThreshold threshold of thread creation
+     * @param threadTerminationThreshold threshold of thread termination
+     */
     public Operator(int maxNumberOfThreads, int threadCreationThreshold, int threadTerminationThreshold) {
 
         setMaxNumberOfThreads(maxNumberOfThreads);
@@ -20,6 +30,9 @@ public class Operator {
         setThreadTerminationThreshold(threadTerminationThreshold);
     }
 
+    /**
+     * Create an operator
+     */
     public Operator(){
     }
 
@@ -177,37 +190,69 @@ public class Operator {
 
     private OperatorWorker _worker = new OperatorWorker();
 
+    /**
+     * Gets threshold of thread creation
+     * @return threshold
+     */
     public int getThreadCreationThreshold() {
         return _worker.threadCreationThreshold;
     }
 
+    /**
+     * Sets threshold of thread creation
+     * @param value threshold
+     */
     public void setThreadCreationThreshold(int value) {
         if (value < 0) throw new IllegalArgumentException();
         _worker.threadCreationThreshold = value;
     }
 
+    /**
+     * Gets threshold of thread termination
+     * @return threshold
+     */
     public int getThreadTerminationThreshold() {
         return _worker.threadTerminationThreshold;
     }
 
+    /**
+     * Sets threshold of thread termination
+     * @param value threshold
+     */
     public void setThreadTerminationThreshold(int value) {
         if (value < 0) throw new IllegalArgumentException();
         _worker.threadTerminationThreshold = value;
     }
 
+    /**
+     * Gets maximum number of threads allowed to be created
+     * @return number of threads
+     */
     public int getMaxNumberOfThreads() {
         return _worker.maxNumberOfThreads;
     }
 
+    /**
+     * Sets maximum number of threads allowed to be created
+     * @param value number of threads
+     */
     public void setMaxNumberOfThreads(int value) {
         if (value < 0) throw new IllegalArgumentException();
         _worker.maxNumberOfThreads = value;
     }
 
+    /**
+     * Gets the number of running threads
+     * @return number of threads
+     */
     public int getThreadCount() {
         return Math.max(0, _worker.getTaskCount() - 1);
     }
 
+    /**
+     * Gets the number of tasks, not yet reached execution time
+     * @return number of tasks
+     */
     public int getPendingTaskCount() {
 
         synchronized (_worker.pendingQueue) {
@@ -215,6 +260,10 @@ public class Operator {
         }
     }
 
+    /**
+     * Gets the number of tasks, waiting to be executed
+     * @return number of tasks
+     */
     public int getWaitingTaskCount() {
 
         synchronized (_worker.waitingQueue) {
@@ -222,10 +271,21 @@ public class Operator {
         }
     }
 
+    /**
+     * Gets the number of all queued tasks
+     * @return number of tasks
+     */
     public int getTaskCount() {
         return getPendingTaskCount() + getWaitingTaskCount();
     }
 
+    /**
+     * Queues a task to be executed after a specified time
+     * @param task task to be executed
+     * @param state object to be passed to the task
+     * @param invocationStamp time, after which the task should be executed
+     * @return object, provides information about the task execution
+     */
     public TaskState queue(Task task, Object state, long invocationStamp) {
 
         if (task == null) throw new IllegalArgumentException("task");
@@ -252,6 +312,12 @@ public class Operator {
         return info.state;
     }
 
+    /**
+     * Queues a task to be executed as soon as possible
+     * @param task task to be executed
+     * @param state object to be passed to the task
+     * @return object, provides information about task execution
+     */
     public TaskState queue(Task task, Object state) {
 
         if (task == null) throw new IllegalArgumentException("task");
@@ -275,27 +341,28 @@ public class Operator {
         return info;
     }
 
-    public TaskState queue(Runnable action) {
+    /**
+     * Queues a task to be executed as soon as possible
+     * @param task task to be executed
+     * @return object, provides information about the task execution
+     */
+    public TaskState queue(Action task) {
 
-        if (action == null) throw new IllegalArgumentException();
+        if (task == null) throw new IllegalArgumentException();
 
-        return queue(new Task() {
-            @Override
-            public void run(Object state) {
-                ((Runnable)state).run();
-            }
-        }, action);
+        return queue(state -> ((Runnable)state).run(), task);
     }
 
-    public TaskState queue(Runnable action, long invocationStamp) {
+    /**
+     * Queues a task to be executed after a specified time
+     * @param task task to be executed
+     * @param invocationStamp time, after which the task should be executed
+     * @return object, provides information about the task execution
+     */
+    public TaskState queue(Action task, long invocationStamp) {
 
-        if (action == null) throw new IllegalArgumentException();
+        if (task == null) throw new IllegalArgumentException();
 
-        return queue(new Task() {
-            @Override
-            public void run(Object state) {
-                ((Runnable)state).run();
-            }
-        }, action, invocationStamp);
+        return queue(state -> ((Runnable)state).run(), task, invocationStamp);
     }
 }

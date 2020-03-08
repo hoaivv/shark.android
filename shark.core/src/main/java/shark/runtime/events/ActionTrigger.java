@@ -14,7 +14,7 @@ import shark.delegates.Action;
 public final class ActionTrigger {
 
     private HashSet<Action> handlers = new HashSet<>();
-
+    private boolean invokerAllocated = false;
     /**
      * Indicates whether the event is listened or not
      * @return true if the event is listened; otherwise false
@@ -53,29 +53,29 @@ public final class ActionTrigger {
         }
     }
 
-    private Object owner;
-
     /**
      * Create an event.
-     * @param owner owner of the event. This object is used to protect the event from illegal access
      */
-    public ActionTrigger(Object owner) {
-
-        this.owner = owner;
+    public ActionTrigger() {
     }
 
     /**
-     * Invokes the event listeners.
-     * @param owner owner of the event.
-     * @throws IllegalAccessException throws if the provided owner is different from the owner
-     * provided when the event is created.
+     * Gets invoker of a trigger. This method could only be called once to ensure only the owner of
+     * the trigger has access to its invoker.
+     * @param trigger trigger, invoker of which to be returned
+     * @return invoker of the trigger on first call; otherwise null
      */
-    public final void invoke(Object owner) throws IllegalAccessException {
+    public static Action getInvoker(ActionTrigger trigger) {
 
-        if (this.owner != owner) throw new IllegalAccessException("An event could only be invoked by its owner class.");
-
-        synchronized (handlers) {
-            for (Action handler : handlers) handler.run();
+        synchronized (trigger) {
+            if (trigger.invokerAllocated) return null;
+            trigger.invokerAllocated = true;
         }
+
+        return () -> {
+            synchronized (trigger.handlers) {
+                for (Action handler : trigger.handlers) handler.run();
+            }
+        };
     }
 }

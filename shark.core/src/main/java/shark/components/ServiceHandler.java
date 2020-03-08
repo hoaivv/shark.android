@@ -1,9 +1,29 @@
 package shark.components;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+
 public abstract class ServiceHandler<TData, TReturn> implements IServiceHandler {
 
-    public abstract Class<TData> getDataClass();
-    public abstract Class<TReturn> getReturnClass();
+    private Class<TData> _D = null;
+    private Class<TReturn> _R = null;
+
+    protected ServiceHandler() {
+
+        Class<?> cls = this.getClass();
+        while (cls.getSuperclass() != ServiceHandler.class)  cls = cls.getSuperclass();
+        Type[] types = ((ParameterizedType)cls.getGenericSuperclass()).getActualTypeArguments();
+
+        _D = (Class<TData>)types[0];
+        _R = (Class<TReturn>)types[1];
+    }
+
+    public final Class<TData> getDataClass() {
+        return _D;
+    }
+    public final Class<TReturn> getReturnClass() {
+        return _R;
+    }
 
     protected abstract TReturn process(ServiceRequestInfo<TData> request);
 

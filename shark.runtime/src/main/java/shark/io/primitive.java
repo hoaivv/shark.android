@@ -17,7 +17,7 @@ public final class primitive {
      * @return an array contains read bytes
      * @throws IOException throws if the reading operation is failed
      */
-    private static byte[] read(InputStream input, int length) throws IOException {
+    private static byte[] readBytes(InputStream input, int length) throws IOException {
 
         int count = 0;
         byte[] buffer = new byte[length];
@@ -35,7 +35,7 @@ public final class primitive {
      */
     public static byte readByte(InputStream input) throws IOException {
 
-        return read(input, 1)[0];
+        return readBytes(input, 1)[0];
     }
 
     /**
@@ -46,7 +46,7 @@ public final class primitive {
      */
     public static int readInt(InputStream input) throws IOException {
 
-        return ByteBuffer.wrap(read(input, Integer.BYTES)).getInt();
+        return ByteBuffer.wrap(readBytes(input, Integer.BYTES)).getInt();
     }
 
     /**
@@ -57,7 +57,7 @@ public final class primitive {
      */
     public static long readLong(InputStream input) throws IOException {
 
-        return ByteBuffer.wrap(read(input, Long.BYTES)).getLong();
+        return ByteBuffer.wrap(readBytes(input, Long.BYTES)).getLong();
     }
 
     /**
@@ -68,7 +68,7 @@ public final class primitive {
      */
     public static float readFloat(InputStream input) throws IOException {
 
-        return ByteBuffer.wrap(read(input, Float.BYTES)).getFloat();
+        return ByteBuffer.wrap(readBytes(input, Float.BYTES)).getFloat();
     }
 
     /**
@@ -78,7 +78,7 @@ public final class primitive {
      * @throws IOException throws if the reading operation is failed
      */
     public static double readDouble(InputStream input) throws IOException {
-        return ByteBuffer.wrap(read(input, Double.BYTES)).getDouble();
+        return ByteBuffer.wrap(readBytes(input, Double.BYTES)).getDouble();
     }
 
     /**

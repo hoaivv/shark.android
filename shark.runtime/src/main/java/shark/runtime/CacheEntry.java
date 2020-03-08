@@ -3,7 +3,6 @@ package shark.runtime;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.HashMap;
 
 import shark.io.File;
 import shark.runtime.serialization.Serializer;
@@ -16,18 +15,6 @@ import shark.utils.Log;
  */
 public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
 
-    private static HashMap<String, CacheEntryOperator> instances = new HashMap<>();
-
-    static <TIndex, TData> CacheEntryOperator<TIndex, TData> _of(Class<TIndex> index, Class<TData> data) throws InterruptedException {
-
-        String key = "index:{" + index.getName() + "}, data:{" + data.getName() +"}";
-
-        synchronized (instances) {
-            if (!instances.containsKey(key)) instances.put(key, new CacheEntryOperator(index, data));
-            return (CacheEntryOperator<TIndex,TData>)instances.get(key);
-        }
-    }
-
     private Long creationStampUtc = null;
     private Long lastModifiedUtc = null;
     private TData data;
@@ -37,21 +24,17 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
 
     long version = 0;
 
-    private Class<TIndex> indexClass;
-    private Class<TData> dataClass;
+    private Cache<TIndex, TData> cache;
 
-    CacheEntry(Class<TIndex> tIndex, Class<TData> tData, long fileIndex) {
+    CacheEntry(Cache<TIndex, TData> cache, long fileIndex) {
 
-        indexClass = tIndex;
-        dataClass = tData;
-
+        this.cache = cache;
         this.fileIndex = fileIndex;
     }
 
-    CacheEntry(Class<TIndex> tIndex, Class<TData> tData, TIndex index, long fileIndex) {
+    CacheEntry(Cache<TIndex, TData> cache, TIndex index, long fileIndex) {
 
-        indexClass = tIndex;
-        dataClass = tData;
+        this.cache = cache;
 
         this.fileIndex = fileIndex;
         this.index = index;
@@ -64,7 +47,7 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
     @Override
     protected void finalize() throws Throwable {
         super.finalize();
-        if (creationStampUtc == null) Cache.of(indexClass, dataClass)._removeUnsettled(index);
+        if (creationStampUtc == null) cache._free(index);
     }
 
     /**
@@ -99,7 +82,7 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
      * {@link shark.Framework} is started
      */
     public File getFile() throws InterruptedException {
-        return CacheEntry._of(indexClass, dataClass)._getFile(fileIndex);
+        return new File(cache.getCacheDirectory() + "/" + fileIndex + ".data");
     }
 
     /**
@@ -189,13 +172,13 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
                 FileInputStream stream = null;
 
                 try {
-                    Serializer serializer = Cache.of(indexClass, dataClass).getSerialier();
+                    Serializer serializer = cache.getSerialier();
                     stream = new FileInputStream(file);
 
                     creationStampUtc = serializer.deserializeWithLengthPrefix(stream, Long.class);
                     lastModifiedUtc = serializer.deserializeWithLengthPrefix(stream, Long.class);
-                    index = serializer.deserializeWithLengthPrefix(stream, indexClass);
-                    data = serializer.deserializeWithLengthPrefix(stream, dataClass);
+                    index = serializer.deserializeWithLengthPrefix(stream, cache._indexClass);
+                    data = serializer.deserializeWithLengthPrefix(stream, cache._dataClass);
                 }
                 finally {
                     if (stream != null) stream.close();
@@ -215,7 +198,7 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
 
         try {
 
-            File dir = Cache.of(indexClass, dataClass).getCacheDirectory();
+            File dir = cache.getCacheDirectory();
             if (!dir.exists() && !dir.mkdirs()) {
 
                 Log.error(this.getClass(), "Could not create cache directory");
@@ -230,7 +213,7 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
         try {
             synchronized (this) {
 
-                Serializer serializer = Cache.of(indexClass, dataClass).getSerialier();
+                Serializer serializer = cache.getSerialier();
                 FileOutputStream stream = null;
 
                 try {
@@ -262,7 +245,7 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
      * @throws InterruptedException throws if the calling thread is interruped before
      * {@link shark.Framework} is started
      */
-    public boolean update(TData value, long lastModifiedUtc) throws InterruptedException {
+    public boolean update(TData value, long lastModifiedUtc) {
 
         synchronized (this) {
 
@@ -276,18 +259,7 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
 
             isLoaded = true;
 
-            Cache.of(indexClass, dataClass).setLastEntryModifiedUtc(lastModifiedUtc);
-
-            synchronized (CacheEntry._of(indexClass, dataClass).pendingEntries) {
-                CacheController.setPersistent(false);
-                CacheEntry._of(indexClass, dataClass).pendingEntries.put(fileIndex, this);
-            }
-
-            try {
-                CacheEntry._of(indexClass, dataClass).onEntryModified.invoke(CacheEntry._of(indexClass, dataClass).pendingEntries, new CacheEntryModifiedEventArgs<TIndex, TData>(this, create ? CacheEntryAction.Create : CacheEntryAction.Update));
-            }
-            catch (IllegalAccessException e){
-            }
+            cache._modify(this, create ? CacheEntryAction.Create : CacheEntryAction.Update, lastModifiedUtc);
         }
 
         return true;
@@ -316,18 +288,7 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
     public boolean delete(long actionStampUtc) throws InterruptedException {
 
         synchronized (this) {
-            Cache.of(indexClass, dataClass).setLastEntryModifiedUtc(actionStampUtc);
-
-            synchronized (CacheEntry._of(indexClass, dataClass).pendingEntries) {
-                CacheController.setPersistent(false);
-                CacheEntry._of(indexClass, dataClass).pendingEntries.put(fileIndex, null);
-            }
-
-            try {
-                CacheEntry._of(indexClass, dataClass).onEntryModified.invoke(CacheEntry._of(indexClass, dataClass).pendingEntries, new CacheEntryModifiedEventArgs<TIndex, TData>(this, CacheEntryAction.Delete));
-            }
-            catch (IllegalAccessException e){
-            }
+            cache._modify(this, CacheEntryAction.Delete, actionStampUtc);
         }
 
         return true;

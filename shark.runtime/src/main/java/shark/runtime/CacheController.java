@@ -5,6 +5,8 @@ import java.io.FileOutputStream;
 import java.util.HashMap;
 
 import shark.Framework;
+import shark.delegates.Action1;
+import shark.delegates.Function1;
 import shark.io.File;
 import shark.runtime.events.ActionEvent;
 import shark.runtime.events.FunctionTrigger;
@@ -14,7 +16,6 @@ import shark.utils.Log;
 
 /**
  * Controller of Shark Caching System.
- * {@link Framework} is started
  */
 public final class CacheController {
 
@@ -28,7 +29,8 @@ public final class CacheController {
     private static Long lastCleanupStamp = null;
     private static int _lastCacheCount = 0;
 
-    static FunctionTrigger<Boolean> onCommitChangesToStorage = null;
+    static final FunctionTrigger<Boolean> onCommitChangesToStorage = new FunctionTrigger<>();
+    private static Function1<Boolean[], Boolean> onCommitChangesToStorageInvoker = FunctionTrigger.getInvoker(onCommitChangesToStorage);
 
     private static boolean _commitChangesToStorage() {
         synchronized (_caches) {
@@ -62,12 +64,8 @@ public final class CacheController {
 
             while (true) {
 
-                try {
-                    setPersistent(onCommitChangesToStorage.invoke(signature, true));
-                } catch (IllegalAccessException e) {
-                }
-
-                Thread.currentThread().join(1000);
+                setPersistent(onCommitChangesToStorageInvoker.run(new Boolean[] { true }));
+                Thread.currentThread().join(100);
             }
         } catch (InterruptedException e) {
         }
@@ -121,7 +119,6 @@ public final class CacheController {
             }
         }
 
-        onCommitChangesToStorage = new FunctionTrigger<>(this);
         onCommitChangesToStorage.add(() -> _commitChangesToStorage());
 
         Parallel.start(state -> _storingTask(), null, false);
@@ -129,7 +126,8 @@ public final class CacheController {
 
     private static CacheController signature = new CacheController();
 
-    static ActionEvent<Long> onCleanup = new ActionEvent<>(signature);
+    static ActionEvent<Long> onCleanup = new ActionEvent<>();
+    private static Action1<Long> onCleanupInvoker = ActionEvent.getInvoker(onCleanup);
 
     /**
      * Gets directory where all caching data to be stored. This method blocks calling thread until
@@ -246,7 +244,7 @@ public final class CacheController {
      */
     public static void clearAll(long stamp) {
         lastCleanupStamp = stamp;
-        try { onCleanup.invoke(signature, lastCleanupStamp); } catch (IllegalAccessException e) { }
+        onCleanupInvoker.run(lastCleanupStamp);
     }
 
     /**

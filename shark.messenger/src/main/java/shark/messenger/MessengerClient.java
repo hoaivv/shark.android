@@ -1,5 +1,7 @@
 package shark.messenger;
 
+import shark.delegates.Action;
+import shark.delegates.Action1;
 import shark.runtime.Promise;
 import shark.runtime.events.ActionEvent;
 import shark.runtime.events.ActionTrigger;
@@ -10,11 +12,14 @@ public class MessengerClient implements MessengerTarget {
     MessengerChannel _channel = null;
     String _server = null;
 
-    private Object secret = new Object();
-    
-    public ActionEvent<MessengerPackage> onPackageReceived = new ActionEvent<>(secret);
-    public ActionTrigger onChannelRegistered = new ActionTrigger(secret);
-    public ActionTrigger onChannelTerminated = new ActionTrigger(secret);
+    public ActionEvent<MessengerPackage> onPackageReceived = new ActionEvent<>();
+    private Action1<MessengerPackage> onPackageReceivedInvoker = ActionEvent.getInvoker(onPackageReceived);
+
+    public ActionTrigger onChannelRegistered = new ActionTrigger();
+    private Action onChannelRegisteredInvoker = ActionTrigger.getInvoker(onChannelRegistered);
+
+    public ActionTrigger onChannelTerminated = new ActionTrigger();
+    private Action getOnChannelTerminatedInvoker = ActionTrigger.getInvoker(onChannelTerminated);
 
     public int interval = 500;
 
@@ -63,7 +68,7 @@ public class MessengerClient implements MessengerTarget {
 
                     if (response != null && response.Succeed && response.Data != null) {
 
-                        if (onPackageReceived.hasHandler()) for (MessengerPackage one : response.Data) try { onPackageReceived.invoke(secret, one); } catch (Exception e) { }
+                        if (onPackageReceived.hasHandler()) for (MessengerPackage one : response.Data) try { onPackageReceivedInvoker.run(one); } catch (Exception e) { }
 
                         Thread.sleep(Math.max(1, client.interval));
                     }
@@ -118,7 +123,7 @@ public class MessengerClient implements MessengerTarget {
 
                         synchronized (this) {
                             _channel = channel;
-                            try { onChannelRegistered.invoke(secret); } catch (Exception e) { }
+                            try { onChannelRegisteredInvoker.run(); } catch (Exception e) { }
                         }
 
                         new Puller(this, channel).start();
@@ -134,7 +139,7 @@ public class MessengerClient implements MessengerTarget {
             if (_channel != null) {
 
                 _channel = null;
-                try { onChannelTerminated.invoke(secret); } catch (Exception e) { }
+                try { getOnChannelTerminatedInvoker.run(); } catch (Exception e) { }
             }
         }
     }
