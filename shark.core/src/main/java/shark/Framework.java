@@ -137,10 +137,22 @@ public final class Framework {
                     resolver.run(false);
                 }
                 else {
-                    initialised = true;
-                    dataDirectory = context.getFilesDir().toString();
-                    //noinspection ConstantConditions
-                    resolver.run(true);
+                    if (context == null) {
+                        //noinspection ConstantConditions
+                        resolver.run(false);
+                    }
+                    else {
+                        try {
+                            dataDirectory = context.getFilesDir().toString();
+                            initialised = true;
+                            //noinspection ConstantConditions
+                            resolver.run(true);
+                        }
+                        catch (Exception ignored) {
+                            //noinspection ConstantConditions
+                            resolver.run(false);
+                        }
+                    }
                 }
             }
         }
