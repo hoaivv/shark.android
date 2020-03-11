@@ -128,6 +128,7 @@ public final class Framework {
      * @throws InterruptedException throws if the calling thread is interrupted before context
      * information is acquired by Shark Framework
      */
+    @SuppressWarnings("unused")
     public static Context getContext() throws InterruptedException {
         while (contextGetter == null) Parallel.sleep();
         return contextGetter.run();
