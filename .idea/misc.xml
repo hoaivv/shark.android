@@ -276,6 +276,8 @@
     <pattern value="shark.components.ServiceHandler" method="getReturnClass" />
     <pattern value="shark.components.ServiceHandler" method="process" />
     <pattern value="shark.runtime.Operator.OperatorWorker" method="initialise" />
+    <pattern value="shark.Framework" method="initialise" />
+    <pattern value="shark.Framework" method="start" />
   </component>
   <component name="NullableNotNullManager">
     <option name="myDefaultNullable" value="org.jetbrains.annotations.Nullable" />

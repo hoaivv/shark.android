@@ -90,6 +90,7 @@ public final class http {
          *               or CONNECT or OPTIONS or TRACE or PATCH
          * @return current request object
          */
+        @SuppressWarnings("WeakerAccess")
         public Request method(String method){
             this.method = method;
             return this;
@@ -159,6 +160,7 @@ public final class http {
          * @return instance of the expecting type via {@link Promise} if succeed; otherwise null via
          * {@link Promise}.
          */
+        @SuppressWarnings("WeakerAccess")
         public <T> Promise<T> expect(Class<T> expect) {
 
             return send().then(response -> {
@@ -524,6 +526,7 @@ public final class http {
      *            be added according to value of {@link #useHttpsByDefault}
      * @return an instance of {@link Request}
      */
+    @SuppressWarnings("WeakerAccess")
     public static Request at(String url) {
         return singleton.new Request(url);
     }
