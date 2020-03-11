@@ -12,6 +12,7 @@ import shark.components.ISharkComponent;
 import shark.components.ServiceHandler;
 import shark.delegates.Action;
 import shark.delegates.Action1;
+import shark.delegates.Function;
 import shark.io.File;
 import shark.runtime.Automations;
 import shark.runtime.Parallel;
@@ -58,7 +59,7 @@ public final class Framework {
     @SuppressWarnings({"WeakerAccess", "CanBeFinal"})
     public static boolean writeLogsToFiles = false;
 
-    private static final Framework signature = new Framework();
+    private static final Framework singleton = new Framework();
 
     private Framework(){
     }
@@ -92,7 +93,7 @@ public final class Framework {
     @SuppressWarnings("WeakerAccess")
     public static boolean isRunning() {
 
-        synchronized (signature) {
+        synchronized (singleton) {
             return Automations.hasRunningAutomation() || Workers.hasRunningWorker();
         }
     }
@@ -105,7 +106,7 @@ public final class Framework {
         return initialised;
     }
 
-    private static String dataDirectory = null;
+    private static Function<Context> contextGetter = null;
 
     /**
      * Gets data directory of the application where application generated files can be stored. This
@@ -117,8 +118,19 @@ public final class Framework {
      */
     public static File getDataDirectory() throws InterruptedException {
 
-        while (dataDirectory == null) Parallel.sleep();
-        return new File(dataDirectory);
+        while (contextGetter == null) Parallel.sleep();
+        return File.convert(contextGetter.run().getFilesDir());
+    }
+
+    /**
+     * Gets application context, provided by Android OS when Shark Framework is initialised
+     * @return context provided by Android OS
+     * @throws InterruptedException throws if the calling thread is interrupted before context
+     * information is acquired by Shark Framework
+     */
+    public static Context getContext() throws InterruptedException {
+        while (contextGetter == null) Parallel.sleep();
+        return contextGetter.run();
     }
 
     /**
@@ -138,7 +150,7 @@ public final class Framework {
         }
         finally {
 
-            synchronized (signature) {
+            synchronized (singleton) {
                 if (initialised) {
                     //noinspection ConstantConditions
                     resolver.run(false);
@@ -150,7 +162,7 @@ public final class Framework {
                     }
                     else {
                         try {
-                            dataDirectory = context.getFilesDir().toString();
+                            contextGetter = () -> context;
                             initialised = true;
                             //noinspection ConstantConditions
                             resolver.run(true);
@@ -175,7 +187,7 @@ public final class Framework {
     @SuppressWarnings("WeakerAccess")
     public static void start(ISharkComponent... components) {
 
-        synchronized (signature) {
+        synchronized (singleton) {
             if (!initialised || isRunning() || busy)
                 throw new RuntimeException("Shark is not ready to be started");
             busy = true;
@@ -184,7 +196,7 @@ public final class Framework {
         Runnable commit = () -> {
 
             try {
-                synchronized (signature) {
+                synchronized (singleton) {
 
                     if (debug && log) Log.information(Framework.class, "Starting Shark");
 
@@ -363,7 +375,7 @@ public final class Framework {
      */
     public static void stop() {
 
-        synchronized (signature) {
+        synchronized (singleton) {
 
             if (!initialised || !isRunning() || busy) return;
             busy = true;

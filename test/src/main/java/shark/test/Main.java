@@ -16,8 +16,9 @@ public class Main extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Framework.initialise(this).then(succeed -> {
-            if(succeed) {
+        Framework.initialise(this).then(isSucceed -> {
+
+            if(isSucceed) {
                 Framework.start(new TestService());
             }
         });
