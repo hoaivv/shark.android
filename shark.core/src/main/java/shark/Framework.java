@@ -12,8 +12,10 @@ import shark.components.ISharkComponent;
 import shark.components.ServiceHandler;
 import shark.delegates.Action;
 import shark.delegates.Action1;
+import shark.delegates.Function;
 import shark.io.File;
 import shark.runtime.Automations;
+import shark.runtime.Parallel;
 import shark.runtime.Services;
 import shark.runtime.Worker;
 import shark.runtime.Workers;
@@ -38,21 +40,24 @@ public final class Framework {
      * Gets or sets a value which directs the framework to writes debug loges or not. This value
      * will have no effects if {@link #log} is set to false
      */
+    @SuppressWarnings("CanBeFinal")
     public static boolean debug = false;
 
     /**
      * Gets or sets a value which directs the framework to trace log writer or not. This value
      * will have no effects if {@link #log} is set to false
      */
+    @SuppressWarnings("CanBeFinal")
     public static boolean traceLogCaller = false;
 
     /**
      * Gets or sets a value which directs the framework to writes loges to files, This value will
      * have no effects if {@link #log} is set to false
      */
+    @SuppressWarnings({"WeakerAccess", "CanBeFinal"})
     public static boolean writeLogsToFiles = false;
 
-    private static Framework signature = new Framework();
+    private static final Framework signature = new Framework();
 
     private Framework(){
     }
@@ -60,26 +65,30 @@ public final class Framework {
     /**
      * Event to be triggered when a log is written using Shark Logging System
      */
+    @SuppressWarnings("WeakerAccess")
     public final static ActionEvent<LogData> onLogged = new ActionEvent<>();
-    private static Action1<LogData> onLoggedInvoker = ActionEvent.getInvoker(onLogged);
+    private static final Action1<LogData> onLoggedInvoker = ActionEvent.getInvoker(onLogged);
 
     /**
      * Event to be triggered when the framework is started
      */
+    @SuppressWarnings("WeakerAccess")
     public final static ActionTrigger onStarted = new ActionTrigger();
-    private static Action onStartedInvoker = ActionTrigger.getInvoker(onStarted);
+    private static final Action onStartedInvoker = ActionTrigger.getInvoker(onStarted);
 
     /**
      * Event to be triggered when the framework is stopped
      */
+    @SuppressWarnings("WeakerAccess")
     public final static ActionTrigger onStopped = new ActionTrigger();
-    private static Action onStoppedInvoker = ActionTrigger.getInvoker(onStopped);
+    private static final Action onStoppedInvoker = ActionTrigger.getInvoker(onStopped);
 
     /**
      * Indicates whether the framework is running or not. The framework is defined as running if
      * at least one {@link IAutomation} or {@link Worker} is running
      * @return true if the framework is running; otherwise false
      */
+    @SuppressWarnings("WeakerAccess")
     public static boolean isRunning() {
 
         synchronized (signature) {
@@ -99,7 +108,7 @@ public final class Framework {
 
     /**
      * Gets data directory of the application where application generated files can be stored. This
-     * method will block the calling thread untils the data directory information is avaialble to
+     * method will block the calling thread until the data directory information is available to
      * the framework.
      * @return Information of the application data directory
      * @throws InterruptedException throws if the thread on which this method is being invoked is
@@ -107,7 +116,7 @@ public final class Framework {
      */
     public static File getDataDirectory() throws InterruptedException {
 
-        while (dataDirectory == null) Thread.currentThread().join(100);
+        while (dataDirectory == null) Parallel.sleep();
         return new File(dataDirectory);
     }
 
@@ -115,13 +124,17 @@ public final class Framework {
      * Starts Shark.Framework and loading Shark's components. If this method is invoked on the main
      * thread it will run asynchronously, otherwise it will run synchronously.
      * @param context context provided at runtime by android
-     * @param components component to be loaded before starting the framework
+     * @param initializer component initializer. To ensure components are being initialised after
+     *                    the framework is initialised do all component creation and initialisation
+     *                    inside of this method.
      */
-    public static void start(Context context, ISharkComponent... components) {
+    @SuppressWarnings("WeakerAccess")
+    public static void start(Context context, Function<ISharkComponent[]> initializer) {
 
         Runnable commit = () -> {
 
             synchronized (signature) {
+
                 if (isRunning() && initialised) return;
 
                 if (debug && log) Log.information(Framework.class, "Starting Shark");
@@ -131,6 +144,8 @@ public final class Framework {
                     initialised = true;
 
                     dataDirectory = context.getFilesDir().toString();
+
+                    ISharkComponent[] components = initializer == null ? new ISharkComponent[0] : initializer.run();
 
                     if (components.length > 0 && log && debug)
                         Log.information(Framework.class, "Registering Shark components");
@@ -148,7 +163,8 @@ public final class Framework {
                     }
                 }
 
-                if (debug) Log.information(Framework.class, "Starting automations");
+                if (debug) //noinspection SpellCheckingInspection
+                    Log.information(Framework.class, "Starting automations");
 
                 for (IAutomation one : Automations.getAll()) {
 
@@ -200,6 +216,15 @@ public final class Framework {
         else {
             commit.run();
         }
+    }
+
+    /**
+     * Starts Shark.Framework and loading Shark's components. If this method is invoked on the main
+     * thread it will run asynchronously, otherwise it will run synchronously.
+     * @param context context provided at runtime by android
+     */
+    public static void start(Context context) {
+        start(context, null);
     }
 
     /**
@@ -274,13 +299,14 @@ public final class Framework {
      * @param data log data
      * @return true if succeed; otherwise false
      */
+    @SuppressWarnings("UnusedReturnValue")
     public static boolean log(LogData data) {
 
         if (!log) return false;
 
         if (!onLogged.hasHandler() && !writeLogsToFiles) return false;
 
-        try { onLoggedInvoker.run(data); } catch (Exception e) { };
+        try { onLoggedInvoker.run(data); } catch (Exception ignored) { }
 
         if (!writeLogsToFiles) return true;
 
@@ -311,9 +337,11 @@ public final class Framework {
             if (debug && log) Log.information(Framework.class,
                     "Stopping Shark");
 
-            if (debug && log) Log.information(Framework.class,
+            if (debug && log) //noinspection SpellCheckingInspection
+                Log.information(Framework.class,
                     "Stopping automations and workers");
 
+            //noinspection SpellCheckingInspection
             IAutomation[] allAutomations = Automations.getRunningAutomations();
 
             ArrayList<Thread> componentStoppingThreads = new ArrayList<>();
@@ -337,7 +365,7 @@ public final class Framework {
 
                 try {
                     T.join();
-                } catch (InterruptedException e) {
+                } catch (InterruptedException ignored) {
                 }
             }
 
@@ -346,9 +374,11 @@ public final class Framework {
                     HashSet<String> running = new HashSet<>();
 
                     for (IAutomation automation : Automations.getRunningAutomations())
+                        //noinspection ConstantConditions
                         running.add(automation.getClass().getPackage().getName() + "/" + automation.getClass().getName() + " (automation)");
                     for (Worker worker : Workers.getRunningWorkers())
                         if (!Automations.isRegistered(worker))
+                            //noinspection ConstantConditions
                             running.add(worker.getClass().getPackage().getName() + "/" + worker.getClass().getName() + " (worker)");
 
                     if (log) Log.warning(Framework.class,
@@ -371,32 +401,31 @@ public final class Framework {
 
     private static Runnable _componentStoppingThreadHandler(final Object component) {
 
-        return new Runnable() {
-            @Override
-            public void run() {
+        return () -> {
 
-                if (Worker.class.isAssignableFrom(component.getClass())) {
-                    ((Worker)component).stop();
-                }
-                else {
-                    if (Framework.debug) Log.information(Automations.class,
-                            "Stopping automation",
-                            "Class: " + component.getClass().getName(),
-                            "Package: " + component.getClass().getPackage().getName());
-                }
+            if (Worker.class.isAssignableFrom(component.getClass())) {
+                ((Worker)component).stop();
+            }
+            else {
+                if (Framework.debug) //noinspection ConstantConditions
+                    Log.information(Automations.class,
+                        "Stopping automation",
+                        "Class: " + component.getClass().getName(),
+                        "Package: " + component.getClass().getPackage().getName());
+            }
 
-                try {
-                    ((IAutomation)component).stop();
-                }
-                catch (Exception e) {
-                    Log.error(Automations.class,
-                            "Error detected",
-                            "Operation: stopping automation",
-                            "Class: " + component.getClass().getName(),
-                            "Package: " + component.getClass().getPackage().getName(),
-                            "Error: " + e.getMessage(),
-                            Log.stringify(e.getStackTrace()));
-                }
+            try {
+                ((IAutomation)component).stop();
+            }
+            catch (Exception e) {
+                //noinspection ConstantConditions
+                Log.error(Automations.class,
+                        "Error detected",
+                        "Operation: stopping automation",
+                        "Class: " + component.getClass().getName(),
+                        "Package: " + component.getClass().getPackage().getName(),
+                        "Error: " + e.getMessage(),
+                        Log.stringify(e.getStackTrace()));
             }
         };
     }

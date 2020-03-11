@@ -1,5 +1,7 @@
 package shark.runtime;
 
+import android.annotation.SuppressLint;
+
 import java.util.HashMap;
 
 import shark.Framework;
@@ -16,13 +18,13 @@ public final class Service {
 
     private class _ExecutionInfo
     {
-        public Service service;
-        public IServiceRequestInfo request;
-        public int requestIdentifier;
-        public ServiceExecutionState state;
-        public boolean sync;
+        private final Service service;
+        private final IServiceRequestInfo request;
+        private final int requestIdentifier;
+        private final ServiceExecutionState state;
+        private final boolean sync;
 
-        public _ExecutionInfo(Service service, IServiceRequestInfo request, int requestIdentifier, ServiceExecutionState state, boolean sync) {
+        private  _ExecutionInfo(Service service, IServiceRequestInfo request, int requestIdentifier, ServiceExecutionState state, boolean sync) {
             this.service = service;
             this.request = request;
             this.requestIdentifier = requestIdentifier;
@@ -31,12 +33,13 @@ public final class Service {
         }
     }
 
-    private int id;
-    private IServiceHandler handler;
-    private String name;
-    private String[] alts;
+    private final int id;
+    private final IServiceHandler handler;
+    private final String name;
+    private final String[] alts;
 
-    private HashMap<Integer, ServiceExecutionState> _managedExecutionStates = new HashMap<>();
+    @SuppressLint("UseSparseArrays")
+    private final HashMap<Integer, ServiceExecutionState> _managedExecutionStates = new HashMap<>();
 
     private long invocationCount = 0;
     private long executionCount = 0;
@@ -64,6 +67,7 @@ public final class Service {
      * Gets class of the service handler
      * @return class of the service handler
      */
+    @SuppressWarnings("WeakerAccess")
     public Class<? extends IServiceHandler> getHandlerClass() {
 
         return handler.getClass();
@@ -71,7 +75,7 @@ public final class Service {
 
     /**
      * Gets class of processable data of the service
-     * @return
+     * @return class
      */
     public Class<?> getDataClass() {
         return handler.getDataClass();
@@ -79,7 +83,7 @@ public final class Service {
 
     /**
      * Gets class of response data of the service
-     * @return
+     * @return class
      */
     public Class<?> getReturnClass() {
         return handler.getReturnClass();
@@ -97,6 +101,7 @@ public final class Service {
      * Gets registered identifier of the service
      * @return service identifier
      */
+    @SuppressWarnings("WeakerAccess")
     public int getId() {
         return id;
     }
@@ -163,38 +168,32 @@ public final class Service {
             info.state.notifyFailure(e);
         }
         finally {
+
             info.service.totalExecutionTime += System.currentTimeMillis() - start;
 
             final int wait = info.service.handler.determineResponseCachingTime(info.request, info.state.getResponse());
 
             if (info.state.isSucceed() && wait > 0) {
-                if (info.sync) {
 
-                    Parallel.start(() -> {
-                        try {
-                            Thread.currentThread().join(wait);
-                        } catch (InterruptedException e) {
-                        } finally {
+                try {
+                    if (info.sync) {
+
+                        Parallel.queue(() -> {
 
                             synchronized (info.service._managedExecutionStates) {
                                 info.service._managedExecutionStates.remove(info.requestIdentifier);
                             }
-                        }
-                    });
-                }
-                else {
+                        }, System.currentTimeMillis() + wait);
+                    } else {
 
-                    try {
-                        Thread.currentThread().join(wait);
-                    }
-                    catch (InterruptedException e){
-                    }
-                    finally {
+                        Parallel.sleep(wait);
 
                         synchronized (info.service._managedExecutionStates) {
                             info.service._managedExecutionStates.remove(info.requestIdentifier);
                         }
                     }
+                }
+                catch (InterruptedException ignored) {
                 }
             }
             else {
@@ -212,6 +211,9 @@ public final class Service {
      * @return object, provides information of committed request processing operation
      * @throws InterruptedException throws if the calling thread is interrupted before the operation
      * is completed
+     *
+     * @exception InterruptedException throws if the calling thread is interrupted be for the
+     * processing operation is completed
      */
     public ServiceExecutionResult process(IServiceRequestInfo request) throws InterruptedException {
 
@@ -232,22 +234,21 @@ public final class Service {
 
             if (result == null){
 
-                final int id = requestId;
-
                 boolean execute;
 
                 synchronized (_managedExecutionStates) {
 
-                    execute = !_managedExecutionStates.containsKey(id);
-                    if (execute) _managedExecutionStates.put(id, new ServiceExecutionState(request));
-                    result = _managedExecutionStates.get(id);
+                    execute = !_managedExecutionStates.containsKey(requestId);
+                    if (execute) _managedExecutionStates.put(requestId, new ServiceExecutionState(request));
+                    result = _managedExecutionStates.get(requestId);
                 }
 
                 if (execute) _executeTask(new _ExecutionInfo(this, request, requestId, result, true));
             }
         }
 
-        while (!result.isCompleted()) Thread.currentThread().join(Workers.getTaskSleepInterval());
+        //noinspection ConstantConditions
+        while (!result.isCompleted()) Parallel.sleep();
 
         return new ServiceExecutionResult(result.getResponse(), result.getRequest());
     }
@@ -256,8 +257,11 @@ public final class Service {
      * Requests the service to process a request asynchronously
      * @param request request to be proceed
      * @return object, provides information about request processing operation
+     *
+     * @exception InterruptedException throws if the calling thread is interrupted be for the
+     * processing operation is completed
      */
-    public ServiceExecutionState processAsync(final IServiceRequestInfo request){
+    public ServiceExecutionState processAsync(final IServiceRequestInfo request) throws InterruptedException {
 
         invocationCount++;
 
@@ -276,13 +280,11 @@ public final class Service {
 
             if (result == null) {
 
-                final int id = requestId;
-
                 boolean execute;
                 synchronized (_managedExecutionStates) {
-                    execute = !_managedExecutionStates.containsKey(id);
-                    if (execute) _managedExecutionStates.put(id, new ServiceExecutionState(request));
-                    result = _managedExecutionStates.get(id);
+                    execute = !_managedExecutionStates.containsKey(requestId);
+                    if (execute) _managedExecutionStates.put(requestId, new ServiceExecutionState(request));
+                    result = _managedExecutionStates.get(requestId);
                 }
 
                 if (execute) Parallel.queue(state -> _executeTask((_ExecutionInfo)state), new _ExecutionInfo(this, request, requestId, result, false));

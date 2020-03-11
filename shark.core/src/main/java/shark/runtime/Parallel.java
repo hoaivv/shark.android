@@ -7,10 +7,52 @@ import shark.delegates.Action1;
 
 public final class Parallel {
 
-    private static ParallelWorker _worker = new ParallelWorker();
-    private static Operator _operator = new Operator(100, 10, 50);
+    private class LoopCounter {
 
-    private static Parallel signature = new Parallel();
+        private int count = 0;
+        private boolean used = false;
+
+        void increase() {
+
+            synchronized (this) {
+                count++;
+                used = true;
+            }
+        }
+
+        void decrease() {
+
+            synchronized (this) {
+                count--;
+            }
+        }
+
+        boolean isWaiting() {
+
+            synchronized (this) {
+                return !used || count != 0;
+            }
+        }
+    }
+
+    private class Worker extends shark.runtime.Worker {
+
+        private TaskState start(Task task, Object state, boolean repeat) {
+            if (task == null) throw new IllegalArgumentException("task");
+
+            TaskState result;
+
+            result = registerTask(task, state, repeat);
+            if (result.isWaiting()) start();
+
+            return result;
+        }
+    }
+
+    private static final Parallel singleton = new Parallel();
+
+    private static final Worker _worker = singleton.new Worker();
+    private static final Operator _operator = new Operator(100, 10, 50);
 
     /**
      * Gets the maximum number of queue processing threads
@@ -99,8 +141,11 @@ public final class Parallel {
      * @param state object to be passed to the task
      * @param invocationStamp time, after which the task will be executed
      * @return object, provides information about the queued task
+     *
+     * @exception InterruptedException throws if the calling thread is interrupted be for the
+     * queueing operation is completed
      */
-    public static TaskState queue(Task task, Object state, long invocationStamp) {
+    public static TaskState queue(Task task, Object state, long invocationStamp)  throws InterruptedException {
         return _operator.queue(task, state, invocationStamp);
     }
 
@@ -109,8 +154,12 @@ public final class Parallel {
      * @param task task to be executed
      * @param state object to be passed to the task
      * @return object, provides information about the queued task
+     *
+     * @exception InterruptedException throws if the calling thread is interrupted be for the
+     * queueing operation is completed
      */
-    public static TaskState queue(Task task, Object state) {
+    @SuppressWarnings({"WeakerAccess", "UnusedReturnValue"})
+    public static TaskState queue(Task task, Object state) throws InterruptedException {
         return _operator.queue(task, state);
     }
 
@@ -119,8 +168,12 @@ public final class Parallel {
      * @param task task to be executed
      * @param invocationStamp time, after which the task will be executed
      * @return object, provides information about the queued task
+     *
+     * @exception InterruptedException throws if the calling thread is interrupted be for the
+     * queueing operation is completed
      */
-    public static TaskState queue(Action task, long invocationStamp) {
+    @SuppressWarnings("UnusedReturnValue")
+    public static TaskState queue(Action task, long invocationStamp) throws InterruptedException {
         return _operator.queue(task, invocationStamp);
     }
 
@@ -128,8 +181,12 @@ public final class Parallel {
      * Queues a task to be executed as soon as possible
      * @param task task to be executed
      * @return object, provides information about the queued task
+     *
+     * @exception InterruptedException throws if the calling thread is interrupted be for the
+     * queueing operation is completed
      */
-    public static TaskState queue(Action task) {
+    @SuppressWarnings("UnusedReturnValue")
+    public static TaskState queue(Action task) throws InterruptedException {
         return  _operator.queue(task);
     }
 
@@ -141,6 +198,7 @@ public final class Parallel {
      *               is set to {@code true} the task will be executed repeatedly.
      * @return object, provides information about the task
      */
+    @SuppressWarnings("UnusedReturnValue")
     public static TaskState start(Task task, Object state, boolean repeat) {
         return _worker.start(task, state, repeat);
     }
@@ -154,12 +212,7 @@ public final class Parallel {
 
         if (task == null) throw new IllegalArgumentException();
 
-        return _worker.start(new Task() {
-            @Override
-            public void run(Object state) {
-                ((Runnable)state).run();
-            }
-        }, task, false);
+        return _worker.start(state -> ((Action)state).run(), task, false);
     }
 
     /**
@@ -172,7 +225,7 @@ public final class Parallel {
      */
     public static void loop(int fromInclusive, int toExclusive, Action1<Integer> body) throws InterruptedException {
 
-        final ParallelLoopCounter counter = new ParallelLoopCounter();
+        final LoopCounter counter = singleton.new LoopCounter();
 
         int step = fromInclusive < toExclusive ? 1 : -1;
 
@@ -191,7 +244,7 @@ public final class Parallel {
             });
         }
 
-        while (!counter.isCompleted()) Thread.currentThread().join(Workers.getTaskSleepInterval());
+        while (counter.isWaiting()) Parallel.sleep();
     }
 
 
@@ -205,12 +258,13 @@ public final class Parallel {
      */
     public static <T> void each(Iterable<T> collection, final Action1<T> body) throws InterruptedException {
 
-        final ParallelLoopCounter counter = new ParallelLoopCounter();
+        final LoopCounter counter = singleton.new LoopCounter();
 
         for (T one : collection){
             queue(state -> {
                 try {
                     counter.increase();
+                    //noinspection unchecked
                     body.run((T) state);
                 } finally {
                     counter.decrease();
@@ -218,7 +272,7 @@ public final class Parallel {
             }, one);
         }
 
-        while (!counter.isCompleted()) Thread.currentThread().join(Workers.getTaskSleepInterval());
+        while (counter.isWaiting()) Parallel.sleep();
     }
 
     /**
@@ -227,5 +281,34 @@ public final class Parallel {
      */
     public static boolean isMainThread() {
         return Looper.myLooper() == Looper.getMainLooper();
+    }
+
+    /**
+     * Causes the currently executing thread to sleep (temporarily cease
+     * execution) for the specified number of milliseconds, subject to
+     * the precision and accuracy of system timers and schedulers. The thread
+     * does not lose ownership of any monitors.
+     *
+     * @param  millis
+     *         the length of time to sleep in milliseconds
+     *
+     * @throws  IllegalArgumentException
+     *          if the value of {@code millis} is negative
+    */
+    public static void sleep(long millis) throws InterruptedException {
+        Thread.sleep(millis);
+    }
+
+    /**
+     * Causes the currently executing thread to sleep (temporarily cease
+     * execution) for the number of milliseconds specified by {@link Workers} task sleep interval,
+     * subject to the precision and accuracy of system timers and schedulers. The thread
+     * does not lose ownership of any monitors.
+     *
+     * @throws  IllegalArgumentException
+     *          if the value of {@code millis} is negative
+     */
+    public static void sleep() throws InterruptedException {
+        sleep(Workers.getTaskSleepInterval());
     }
 }

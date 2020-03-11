@@ -2,7 +2,7 @@ package shark.components;
 
 public class ServiceRequestInfo<T> implements IServiceRequestInfo {
 
-    private T data;
+    private final T data;
 
     public T getData(){
         return data;

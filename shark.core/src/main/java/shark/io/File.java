@@ -16,6 +16,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 
@@ -57,20 +58,14 @@ public class File extends java.io.File {
     public String[] readAllLines() throws IOException {
 
         ArrayList<String> lines = new ArrayList<>();
-        BufferedReader reader = null;
 
-        try {
-
-            reader = new BufferedReader(new FileReader(this));
+        try (BufferedReader reader = new BufferedReader(new FileReader(this))) {
 
             while (true) {
                 String line = reader.readLine();
                 if (line == null) break;
                 lines.add(line);
             }
-        }
-        finally {
-            if (reader != null) reader.close();
         }
 
         return lines.toArray(new String[0]);
@@ -83,12 +78,8 @@ public class File extends java.io.File {
      */
     public String readAllText() throws IOException {
 
-        Reader reader = null;
         StringBuilder builder = new StringBuilder();
-
-        try {
-
-            reader = new InputStreamReader(new BufferedInputStream(new FileInputStream(this)), "UTF-8");
+        try (Reader reader = new InputStreamReader(new BufferedInputStream(new FileInputStream(this)), StandardCharsets.UTF_8)) {
 
 
             while (true) {
@@ -96,11 +87,8 @@ public class File extends java.io.File {
                 int character = reader.read();
                 if (character < 0) break;
 
-                builder.append((char)character);
+                builder.append((char) character);
             }
-        }
-        finally {
-            if (reader != null) reader.close();
         }
 
         return builder.toString();
@@ -114,24 +102,16 @@ public class File extends java.io.File {
      */
     public String readAllText(String charsetName) throws IOException {
 
-        Reader reader = null;
         StringBuilder builder = new StringBuilder();
-
-        try {
-
-            reader = new InputStreamReader(new BufferedInputStream(new FileInputStream(this)), charsetName);
-
+        try (Reader reader = new InputStreamReader(new BufferedInputStream(new FileInputStream(this)), charsetName)) {
 
             while (true) {
 
                 int character = reader.read();
                 if (character < 0) break;
 
-                builder.append((char)character);
+                builder.append((char) character);
             }
-        }
-        finally {
-            if (reader != null) reader.close();
         }
 
         return builder.toString();
@@ -146,15 +126,9 @@ public class File extends java.io.File {
      */
     public <T> T readObject(Class<T> type) throws IOException {
 
-        Reader reader = null;
+        try (Reader reader = new InputStreamReader(new BufferedInputStream(new FileInputStream(this)))) {
 
-        try {
-
-            reader = new InputStreamReader(new BufferedInputStream(new FileInputStream(this)));
             return new Gson().fromJson(reader, type);
-        }
-        finally {
-            if (reader != null) reader.close();
         }
     }
 
@@ -165,13 +139,7 @@ public class File extends java.io.File {
      */
     public byte[] readAllBytes() throws IOException {
 
-        FileInputStream reader = null;
-        ByteArrayOutputStream stream = null;
-
-        try {
-
-            reader = new FileInputStream(this);
-            stream = new ByteArrayOutputStream();
+        try (FileInputStream reader = new FileInputStream(this); ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
 
             byte[] buffer = new byte[1024];
 
@@ -179,15 +147,10 @@ public class File extends java.io.File {
 
                 int count = reader.read(buffer);
                 if (count < 0) break;
-                stream.write(buffer,0, count);
+                stream.write(buffer, 0, count);
             }
 
             return stream.toByteArray();
-        }
-        finally {
-
-            if (reader != null) reader.close();
-            if (stream != null) stream.close();
         }
     }
 
@@ -199,15 +162,9 @@ public class File extends java.io.File {
      */
     public void writeAllBytes(byte[] bytes) throws IOException {
 
-        OutputStream writer = null;
-
-        try {
-            writer = new BufferedOutputStream(new FileOutputStream(this));
+        try (OutputStream writer = new BufferedOutputStream(new FileOutputStream(this))) {
             writer.write(bytes);
             writer.flush();
-        }
-        finally {
-            if (writer != null) writer.close();
         }
     }
 
@@ -247,17 +204,12 @@ public class File extends java.io.File {
      * @param bytes an array of bytes to be appended at the end of the file.
      * @throws IOException throws if I/O error occurred during writing operation
      */
+    @SuppressWarnings("WeakerAccess")
     public void appendAllBytes(byte[] bytes) throws IOException {
 
-        OutputStream writer = null;
-
-        try {
-            writer = new BufferedOutputStream(new FileOutputStream(this, true));
+        try (OutputStream writer = new BufferedOutputStream(new FileOutputStream(this, true))) {
             writer.write(bytes);
             writer.flush();
-        }
-        finally {
-            if (writer != null) writer.close();
         }
     }
 
@@ -339,6 +291,7 @@ public class File extends java.io.File {
      *
      * @since  1.2
      */
+    @SuppressWarnings("SpellCheckingInspection")
     public File[] listFiles() {
         return convert(super.listFiles());
     }
@@ -371,6 +324,7 @@ public class File extends java.io.File {
      * @since  1.2
      * @see java.nio.file.Files#newDirectoryStream(Path,java.nio.file.DirectoryStream.Filter)
      */
+    @SuppressWarnings("SpellCheckingInspection")
     public File[] listFiles(FileFilter filter) {
         return convert(super.listFiles(filter));
     }
@@ -405,6 +359,7 @@ public class File extends java.io.File {
      * @since  1.2
      * @see java.nio.file.Files#newDirectoryStream(Path,String)
      */
+    @SuppressWarnings("SpellCheckingInspection")
     public File[] listFiles(FilenameFilter filter) {
         return convert(super.listFiles(filter));
     }
@@ -547,12 +502,7 @@ public class File extends java.io.File {
      * <p> If the <code>directory</code> argument is <code>null</code> then the
      * system-dependent default temporary-file directory will be used.  The
      * default temporary-file directory is specified by the system property
-     * <code>java.io.tmpdir</code>.  On UNIX systems the default value of this
-     * property is typically <code>"/tmp"</code> or <code>"/var/tmp"</code>; on
-     * Microsoft Windows systems it is typically <code>"C:\\WINNT\\TEMP"</code>.  A different
-     * value may be given to this system property when the Java virtual machine
-     * is invoked, but programmatic changes to this property are not guaranteed
-     * to have any effect upon the temporary directory used by this method.
+     * <code>java.io.tmpdir</code>.
      *
      * @param  prefix     The prefix string to be used in generating the file's
      *                    name; must be at least three characters long
@@ -597,6 +547,7 @@ public class File extends java.io.File {
      * @param files instances of {@link java.io.File} to be converted
      * @return instances of converted {@link File }
      */
+    @SuppressWarnings("WeakerAccess")
     public static File[] convert(java.io.File[] files) {
 
         File[] results = new File[files.length];

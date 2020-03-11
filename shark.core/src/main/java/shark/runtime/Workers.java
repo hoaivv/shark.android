@@ -7,13 +7,12 @@ public final class Workers {
     private Workers() {
     }
 
-    private static Workers signature = new Workers();
-
-    private static ArrayList<Worker> instantiatedWorkers = new ArrayList<>();
+    private static final ArrayList<Worker> instantiatedWorkers = new ArrayList<>();
 
     private static long stopTimeout = 10000;
-    private static long taskSleepInterval = 1;
+    private static long taskSleepInterval = 10; // for weak android devices this amount of sleeping time is reasonable
 
+    @SuppressWarnings("WeakerAccess")
     public static long getTaskSleepInterval() {
         return taskSleepInterval;
     }
@@ -25,6 +24,7 @@ public final class Workers {
         }
     }
 
+    @SuppressWarnings("WeakerAccess")
     public static long getStopTimeout() {
         return stopTimeout;
     }
@@ -36,6 +36,7 @@ public final class Workers {
         }
     }
 
+    @SuppressWarnings("WeakerAccess")
     public static Worker[] getAll() {
 
         synchronized (instantiatedWorkers) {

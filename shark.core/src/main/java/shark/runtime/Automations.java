@@ -10,12 +10,14 @@ import shark.utils.Log;
 /**
  * Shark Automation Manager
  */
+@SuppressWarnings({"SpellCheckingInspection", "unused"})
 public final class Automations {
 
+    @SuppressWarnings("SpellCheckingInspection")
     private Automations(){
     }
 
-    private static HashMap<Class<?>, IAutomation> registeredAutomation = new HashMap<>();
+    private static final HashMap<Class<?>, IAutomation> registeredAutomation = new HashMap<>();
 
     public static IAutomation[] getAll() {
 
@@ -28,6 +30,7 @@ public final class Automations {
      * Gets all running automation
      * @return all running automation
      */
+    @SuppressWarnings("SpellCheckingInspection")
     public static IAutomation[] getRunningAutomations() {
 
         ArrayList<IAutomation> results = new ArrayList<>();
@@ -38,7 +41,7 @@ public final class Automations {
 
     /**
      * Indicates whether at least one automation is running or not
-     * @return true if at least one automation is runningn; otherwise false
+     * @return true if at least one automation is running; otherwise false
      */
     public static boolean hasRunningAutomation() {
 
@@ -50,7 +53,8 @@ public final class Automations {
      * Gets number of running automation
      * @return number of running automation
      */
-    public static int getRunningAutomationCount() {
+    @SuppressWarnings("unused")
+    public static int countRunning() {
 
         int count = 0;
         for (IAutomation one : getAll()) if (one.isRunning()) count++;
@@ -86,6 +90,7 @@ public final class Automations {
 
         synchronized (registeredAutomation) {
             if (!registeredAutomation.containsKey(cls)) return false;
+            //noinspection EqualsBetweenInconvertibleTypes
             return worker == registeredAutomation.get(cls);
         }
     }
@@ -95,6 +100,7 @@ public final class Automations {
      * @param cls type of automation
      * @return a registered automation of the specified type if it is registered; otherwise null
      */
+    @SuppressWarnings("unused")
     public static IAutomation get(final Class<? extends IAutomation> cls) {
 
         synchronized (registeredAutomation) {

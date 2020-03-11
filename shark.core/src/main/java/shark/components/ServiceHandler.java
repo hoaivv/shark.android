@@ -5,16 +5,20 @@ import java.lang.reflect.Type;
 
 public abstract class ServiceHandler<TData, TReturn> implements IServiceHandler {
 
-    private Class<TData> _D = null;
-    private Class<TReturn> _R = null;
+    private final Class<TData> _D;
+    private final Class<TReturn> _R;
 
     protected ServiceHandler() {
 
         Class<?> cls = this.getClass();
+        //noinspection ConstantConditions
         while (cls.getSuperclass() != ServiceHandler.class)  cls = cls.getSuperclass();
+        //noinspection ConstantConditions
         Type[] types = ((ParameterizedType)cls.getGenericSuperclass()).getActualTypeArguments();
 
+        //noinspection unchecked
         _D = (Class<TData>)types[0];
+        //noinspection unchecked
         _R = (Class<TReturn>)types[1];
     }
 
@@ -27,6 +31,7 @@ public abstract class ServiceHandler<TData, TReturn> implements IServiceHandler 
 
     protected abstract TReturn process(ServiceRequestInfo<TData> request);
 
+    @SuppressWarnings("WeakerAccess")
     protected int computeIdentifier(ServiceRequestInfo<TData> request){
         return request.getData() == null ? 0 : request.getData().hashCode();
     }
@@ -38,7 +43,8 @@ public abstract class ServiceHandler<TData, TReturn> implements IServiceHandler 
         ServiceRequestInfo<TData> converted;
 
         try {
-             converted = (ServiceRequestInfo<TData>)request;
+            //noinspection unchecked
+            converted = (ServiceRequestInfo<TData>)request;
         }
         catch (ClassCastException e) {
             throw new InvalidServiceDataException(ServiceDataTypes.RequestData, "invalid request");
@@ -48,6 +54,7 @@ public abstract class ServiceHandler<TData, TReturn> implements IServiceHandler 
             return process(converted);
         }
         catch (Exception e) {
+            //noinspection ConstantConditions
             throw  ServiceException.class.isAssignableFrom(e.getClass()) ? (ServiceException)e : new ServiceException("Error detected while processing request", e);
         }
     }
@@ -59,6 +66,7 @@ public abstract class ServiceHandler<TData, TReturn> implements IServiceHandler 
         ServiceRequestInfo<TData> converted;
 
         try {
+            //noinspection unchecked
             converted = (ServiceRequestInfo<TData>)request;
         }
         catch (ClassCastException e) {
@@ -69,6 +77,7 @@ public abstract class ServiceHandler<TData, TReturn> implements IServiceHandler 
             return computeIdentifier(converted);
         }
         catch (Exception e) {
+            //noinspection ConstantConditions
             throw  ServiceException.class.isAssignableFrom(e.getClass()) ? (ServiceException)e : new ServiceException("Error detected while computing request identifier", e);
         }
     }
@@ -81,7 +90,9 @@ public abstract class ServiceHandler<TData, TReturn> implements IServiceHandler 
         TReturn convertedResponse;
 
         try {
+            //noinspection unchecked
             convertedRequest = (ServiceRequestInfo<TData>)request;
+            //noinspection unchecked
             convertedResponse = (TReturn)response;
         }
         catch (ClassCastException e) {
@@ -96,6 +107,7 @@ public abstract class ServiceHandler<TData, TReturn> implements IServiceHandler 
         }
     }
 
+    @SuppressWarnings({"WeakerAccess", "SameReturnValue"})
     protected int determineResponseCachingTime(ServiceRequestInfo<TData> request, TReturn response){
         return 0;
     }

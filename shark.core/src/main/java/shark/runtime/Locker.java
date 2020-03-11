@@ -9,8 +9,8 @@ import shark.utils.Log;
 
 public final class Locker {
 
-    private static HashMap<Class<?>, Integer> _mappedTypes = new HashMap<>();
-    private HashSet<ITypeScopeDistinguishable> _objects = new HashSet<>();
+    private static final HashMap<Class<?>, Integer> _mappedTypes = new HashMap<>();
+    private final HashSet<ITypeScopeDistinguishable> _objects = new HashSet<>();
 
     private static <T> T _process(Object[] objects, int index, Object handler) {
 
@@ -24,6 +24,7 @@ public final class Locker {
                     return null;
                 }
                 else {
+                    //noinspection unchecked
                     return ((Function<T>)handler).run();
                 }
             }
@@ -52,6 +53,7 @@ public final class Locker {
 
         for (int i = 0; i < result.length - 1; i++) {
             for (int j = i + 1; j < result.length; j++) {
+                //noinspection ConstantConditions
                 if (buffer1.get(result[i]) > buffer1.get(result[j]) || result[i].getTypeScopeUniqueIdentifier() > result[j].getTypeScopeUniqueIdentifier()){
                     ITypeScopeDistinguishable buffer2 = result[i];
                     result[i] = result[j];
@@ -63,9 +65,11 @@ public final class Locker {
         return result;
     }
 
+    @SuppressWarnings("WeakerAccess")
     public Locker(){
     }
 
+    @SuppressWarnings("WeakerAccess")
     public void add(ITypeScopeDistinguishable... objects) {
         for (ITypeScopeDistinguishable object : objects) {
             if (object != null) {
@@ -77,11 +81,12 @@ public final class Locker {
         }
     }
 
+    @SuppressWarnings("WeakerAccess")
     public void remove(ITypeScopeDistinguishable... objects) {
         for (ITypeScopeDistinguishable object : objects) {
             if (object != null) {
 
-                synchronized (object) {
+                synchronized (_objects) {
                     _objects.remove(object);
                 }
             }

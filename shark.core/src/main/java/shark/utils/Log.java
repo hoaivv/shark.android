@@ -3,6 +3,7 @@ package shark.utils;
 import java.util.LinkedList;
 
 import shark.Framework;
+import shark.runtime.Parallel;
 
 /**
  * Provides easy access to Shark Framework Logging System
@@ -12,48 +13,46 @@ public final class Log {
     private Log(){
     }
 
-    private static LinkedList<LogData> _logs = new LinkedList<>();
+    private static final LinkedList<LogData> _logs = new LinkedList<>();
 
     private static Thread _thread = null;
 
-    private static Runnable _threadHandler = new Runnable() {
-        @Override
-        public void run() {
-            try {
+    private static final Runnable _threadHandler = () -> {
+        try {
 
-                int threadTerminationPoint = 0;
+            int threadTerminationPoint = 0;
 
-                while (_thread != null) {
+            while (_thread != null) {
 
-                    Object[] logs;
+                Object[] logs;
 
-                    synchronized (_logs) {
+                synchronized (_logs) {
 
-                        logs = _logs.toArray();
-                        if (logs.length == 0) {
+                    logs = _logs.toArray();
+                    //noinspection ConstantConditions
+                    if (logs.length == 0) {
 
-                            if (++threadTerminationPoint >= 100) {
-                                _thread = null;
-                                return;
-                            }
-                        }
-                        else {
-
-                            threadTerminationPoint = 0;
-                            _logs.clear();
+                        if (++threadTerminationPoint >= 100) {
+                            _thread = null;
+                            return;
                         }
                     }
+                    else {
 
-                    for (Object one : logs) {
-                        LogData log = (LogData) one;
-                        Framework.log(log);
+                        threadTerminationPoint = 0;
+                        _logs.clear();
                     }
-
-                    Thread.currentThread().join(10);
                 }
+
+                for (Object one : logs) {
+                    LogData log = (LogData) one;
+                    Framework.log(log);
+                }
+
+                Parallel.sleep();
             }
-            catch (InterruptedException e){
-            }
+        }
+        catch (InterruptedException ignored){
         }
     };
 
@@ -65,13 +64,15 @@ public final class Log {
      *                  This value will have no effects if {@link Framework#traceLogCaller} set to false
      * @param messages messages of the log
      */
+    @SuppressWarnings("WeakerAccess")
     public static void write(Class<?> owner, LogType type, int skipTrace, String... messages) {
 
         if (!Framework.log) return;
 
-        String message = "";
+        StringBuilder message = new StringBuilder();
         for (String one : messages)
-            message += one + (one == messages[messages.length - 1] ? "" : "\r\n");
+            //noinspection StringEquality
+            message.append(one).append(one == messages[messages.length - 1] ? "" : "\r\n");
 
         LogData log;
 
@@ -80,9 +81,9 @@ public final class Log {
             StackTraceElement[] traces = Thread.currentThread().getStackTrace();
             StackTraceElement trace = traces.length > 0 ? traces[Math.max(0, Math.min(skipTrace + 3, traces.length - 1))] : null;
 
-            log = new LogData(owner, trace == null ? null : trace.getClassName() + "." + trace.getMethodName(), type, message);
+            log = new LogData(owner, trace == null ? null : trace.getClassName() + "." + trace.getMethodName(), type, message.toString());
         } else {
-            log = new LogData(owner, null, type, message);
+            log = new LogData(owner, null, type, message.toString());
         }
 
         synchronized (_logs) {
@@ -109,7 +110,7 @@ public final class Log {
     }
 
     /**
-     * Writes an information log via Shark Framework Loggin System
+     * Writes an information log via Shark Framework Logging System
      * @param owner owner of the log
      * @param messages messages of the log
      */
@@ -118,7 +119,7 @@ public final class Log {
     }
 
     /**
-     * Writes an information log via Shark Framework Loggin System
+     * Writes an information log via Shark Framework Logging System
      * @param owner owner of the log
      * @param skipTrace number of stack trace to be skipped when generating trace information of the log.
      *                  This value will have no effects if {@link Framework#traceLogCaller} set to false
@@ -129,7 +130,7 @@ public final class Log {
     }
 
     /**
-     * Writes a warning log via Shark Framework Loggin System
+     * Writes a warning log via Shark Framework Logging System
      * @param owner owner of the log
      * @param messages messages of the log
      */
@@ -138,7 +139,7 @@ public final class Log {
     }
 
     /**
-     * Writes a warning log via Shark Framework Loggin System
+     * Writes a warning log via Shark Framework Logging System
      * @param owner owner of the log
      * @param skipTrace number of stack trace to be skipped when generating trace information of the log.
      *                  This value will have no effects if {@link Framework#traceLogCaller} set to false
@@ -149,7 +150,7 @@ public final class Log {
     }
 
     /**
-     * Writes an error log via Shark Framework Loggin System
+     * Writes an error log via Shark Framework Logging System
      * @param owner owner of the log
      * @param messages messages of the log
      */
@@ -158,7 +159,7 @@ public final class Log {
     }
 
     /**
-     * Writes an error log via Shark Framework Loggin System
+     * Writes an error log via Shark Framework Logging System
      * @param owner owner of the log
      * @param skipTrace number of stack trace to be skipped when generating trace information of the log.
      *                  This value will have no effects if {@link Framework#traceLogCaller} set to false
@@ -176,14 +177,14 @@ public final class Log {
      */
     public static <T> String stringify(T[] collection) {
 
-        String result = "";
+        StringBuilder result = new StringBuilder();
 
-        if (collection == null) return  result;
+        if (collection == null) return result.toString();
 
         for (int i = 0; i < collection.length; i++) {
-            result += collection[i] == null ? "" : collection[i].toString() + (i == collection.length-1 ? "" : "\r\n");
+            result.append(collection[i] == null ? "" : collection[i].toString() + (i == collection.length - 1 ? "" : "\r\n"));
         }
 
-        return result;
+        return result.toString();
     }
 }

@@ -1,12 +1,13 @@
 package shark.runtime.events;
 
+import java.util.Collections;
 import java.util.HashSet;
 
 import shark.delegates.Function;
 import shark.delegates.Function1;
 
 /**
- * Decribes an event which does not provide any information to its listeners and expects return from
+ * Describes an event which does not provide any information to its listeners and expects return from
  * the listeners
  * @param <R> type of value to be returned by listeners
  * @see FunctionEvent
@@ -15,7 +16,7 @@ import shark.delegates.Function1;
  */
 public final class FunctionTrigger<R> {
 
-    private HashSet<Function<R>> handlers = new HashSet<>();
+    private final HashSet<Function<R>> handlers = new HashSet<>();
     private boolean invokerAllocated = false;
 
     /**
@@ -87,7 +88,7 @@ public final class FunctionTrigger<R> {
             if (allowedStates.length == 0) return false;
 
             HashSet<R> states = new HashSet<>();
-            for (R state : allowedStates) states.add(state);
+            Collections.addAll(states, allowedStates);
 
             synchronized (trigger.handlers) {
                 for (Function<R> handler : trigger.handlers)

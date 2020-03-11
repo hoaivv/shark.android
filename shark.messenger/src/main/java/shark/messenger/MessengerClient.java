@@ -7,20 +7,25 @@ import shark.runtime.events.ActionEvent;
 import shark.runtime.events.ActionTrigger;
 import shark.utils.http;
 
+@SuppressWarnings("WeakerAccess")
 public class MessengerClient implements MessengerTarget {
 
-    MessengerChannel _channel = null;
-    String _server = null;
+    private MessengerChannel _channel = null;
+    private final String _server;
 
-    public ActionEvent<MessengerPackage> onPackageReceived = new ActionEvent<>();
-    private Action1<MessengerPackage> onPackageReceivedInvoker = ActionEvent.getInvoker(onPackageReceived);
+    @SuppressWarnings("WeakerAccess")
+    public final ActionEvent<MessengerPackage> onPackageReceived = new ActionEvent<>();
+    private final Action1<MessengerPackage> onPackageReceivedInvoker = ActionEvent.getInvoker(onPackageReceived);
 
-    public ActionTrigger onChannelRegistered = new ActionTrigger();
-    private Action onChannelRegisteredInvoker = ActionTrigger.getInvoker(onChannelRegistered);
+    @SuppressWarnings("WeakerAccess")
+    public final ActionTrigger onChannelRegistered = new ActionTrigger();
+    private final Action onChannelRegisteredInvoker = ActionTrigger.getInvoker(onChannelRegistered);
 
-    public ActionTrigger onChannelTerminated = new ActionTrigger();
-    private Action getOnChannelTerminatedInvoker = ActionTrigger.getInvoker(onChannelTerminated);
+    @SuppressWarnings("WeakerAccess")
+    public final ActionTrigger onChannelTerminated = new ActionTrigger();
+    private final Action getOnChannelTerminatedInvoker = ActionTrigger.getInvoker(onChannelTerminated);
 
+    @SuppressWarnings("WeakerAccess")
     public int interval = 500;
 
     public String getServer(){
@@ -50,14 +55,15 @@ public class MessengerClient implements MessengerTarget {
         this._server = "http://" + server + "/messenger";
     }
 
+    @SuppressWarnings("WeakerAccess")
     class PullResponse extends MessengerResponse {
         public MessengerPackage[] Data;
     }
 
     class Puller extends Thread {
 
-        MessengerChannel channel;
-        MessengerClient client;
+        final MessengerChannel channel;
+        final MessengerClient client;
 
         public void run() {
 
@@ -68,7 +74,8 @@ public class MessengerClient implements MessengerTarget {
 
                     if (response != null && response.Succeed && response.Data != null) {
 
-                        if (onPackageReceived.hasHandler()) for (MessengerPackage one : response.Data) try { onPackageReceivedInvoker.run(one); } catch (Exception e) { }
+                        if (onPackageReceived.hasHandler()) for (MessengerPackage one : response.Data) try { //noinspection ConstantConditions
+                            onPackageReceivedInvoker.run(one); } catch (Exception ignored) { }
 
                         Thread.sleep(Math.max(1, client.interval));
                     }
@@ -77,7 +84,7 @@ public class MessengerClient implements MessengerTarget {
                         boolean alive = false;
 
                         for (MessengerChannel one : getChannels().result()) {
-                            if (one.PushKey == channel.PushKey) {
+                            if (one.PushKey.compareTo(channel.PushKey) == 0) {
                                 alive = true;
                                 break;
                             }
@@ -92,16 +99,17 @@ public class MessengerClient implements MessengerTarget {
                     }
                 }
             }
-            catch (Exception e) {
+            catch (Exception ignored) {
             }
         }
 
-        public Puller(MessengerClient client, MessengerChannel channel){
+        private Puller(MessengerClient client, MessengerChannel channel){
             this.channel = channel;
             this.client = client;
         }
     }
 
+    @SuppressWarnings("WeakerAccess")
     class RegisterResponse extends MessengerResponse {
         public MessengerChannel Data;
     }
@@ -123,7 +131,8 @@ public class MessengerClient implements MessengerTarget {
 
                         synchronized (this) {
                             _channel = channel;
-                            try { onChannelRegisteredInvoker.run(); } catch (Exception e) { }
+                            try { //noinspection ConstantConditions
+                                onChannelRegisteredInvoker.run(); } catch (Exception ignored) { }
                         }
 
                         new Puller(this, channel).start();
@@ -133,17 +142,20 @@ public class MessengerClient implements MessengerTarget {
                 });
     }
 
+    @SuppressWarnings("WeakerAccess")
     public void unregister(){
 
         synchronized (this) {
             if (_channel != null) {
 
                 _channel = null;
-                try { getOnChannelTerminatedInvoker.run(); } catch (Exception e) { }
+                try { //noinspection ConstantConditions
+                    getOnChannelTerminatedInvoker.run(); } catch (Exception ignored) { }
             }
         }
     }
 
+    @SuppressWarnings("WeakerAccess")
     class PushResponse extends MessengerResponse{
         public Long Data;
     }
@@ -208,17 +220,20 @@ public class MessengerClient implements MessengerTarget {
                 .then(response -> response != null && response.Succeed && response.Data > 0);
     }
 
+    @SuppressWarnings("WeakerAccess")
     class ChannelsResponse extends MessengerResponse {
         public MessengerChannel[] Data;
     }
 
+    @SuppressWarnings("WeakerAccess")
     public Promise<MessengerChannel[]> getChannels() {
 
         return http
                 .get(_server + "/channels", ChannelsResponse.class)
-                .then(response -> response != null && response.Succeed == true ? response.Data : new MessengerChannel[0]);
+                .then(response -> response != null && response.Succeed ? response.Data : new MessengerChannel[0]);
     }
 
+    @SuppressWarnings("WeakerAccess")
     class ResourceNamesResponse extends MessengerResponse {
         public String[] Data;
     }
@@ -236,14 +251,14 @@ public class MessengerClient implements MessengerTarget {
 
         return http
                 .post(_server + "/resources", channel, ResourceNamesResponse.class)
-                .then(response -> response != null && response.Succeed == true && response.Data != null ? response.Data : new String[0]);
+                .then(response -> response != null && response.Succeed && response.Data != null ? response.Data : new String[0]);
     }
 
     public Promise<MessengerPackage> getResource(MessengerChannel channel, String name){
 
         String key = channel == null ? null : channel.PushKey;
 
-        if (key == null || key.length() == 0 || name == null || name.length() == 0) return new Promise<MessengerPackage>(null);
+        if (key == null || key.length() == 0 || name == null || name.length() == 0) return new Promise<>(null);
 
         channel = new MessengerChannel();
         channel.PushKey = key;
@@ -251,6 +266,6 @@ public class MessengerClient implements MessengerTarget {
 
         return http
                 .post(_server + "/resources", channel, PullResponse.class)
-                .then(response -> response != null && response.Succeed == true && response.Data != null && response.Data.length > 0 ? response.Data[0] : null);
+                .then(response -> response != null && response.Succeed && response.Data != null && response.Data.length > 0 ? response.Data[0] : null);
     }
 }

@@ -3,8 +3,8 @@ package shark.runtime;
 public class TaskState extends AsyncOperationState {
 
     private Thread thread = null;
-    private Task task = null;
-    private Object state;
+    private final Task task;
+    private final Object state;
 
     Thread getThread(){
         return thread;
@@ -18,6 +18,7 @@ public class TaskState extends AsyncOperationState {
         return state;
     }
 
+    @SuppressWarnings({"WeakerAccess", "CanBeFinal"})
     public boolean isRepeatable;
 
     public boolean isRunning() {

@@ -1,5 +1,6 @@
 package shark.net;
 
+@SuppressWarnings("SpellCheckingInspection")
 public class Connection {
 /*
     private static Object signature = new Object();

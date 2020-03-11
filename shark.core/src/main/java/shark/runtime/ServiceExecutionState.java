@@ -7,11 +7,11 @@ import shark.components.IServiceRequestInfo;
  */
 public class ServiceExecutionState extends AsyncOperationState {
 
-    IServiceRequestInfo request;
+    private final IServiceRequestInfo request;
 
     /**
      * Gets the request, passed to the service to execute
-     * @return
+     * @return service execution request
      */
     public IServiceRequestInfo getRequest(){
         return request;

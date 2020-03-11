@@ -1,7 +1,7 @@
 package shark.utils;
 
 /**
- * Describes types of log understanded by Shark Framework Logging System
+ * Describes types of logs, understandable by Shark Framework Logging System
  */
 public enum LogType {
 

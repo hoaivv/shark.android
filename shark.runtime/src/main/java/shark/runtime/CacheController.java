@@ -17,12 +17,13 @@ import shark.utils.Log;
 /**
  * Controller of Shark Caching System.
  */
+@SuppressWarnings("WeakerAccess")
 public final class CacheController {
 
     private class AllocationJson extends HashMap<String, Long> {
     }
 
-    private static HashMap<String, Long> _caches = new HashMap<>();
+    private static final HashMap<String, Long> _caches = new HashMap<>();
     private static long _currentFileIndex = 0;
     private static Serializer _defaultSerializer = new JsonSerializer();
 
@@ -30,7 +31,7 @@ public final class CacheController {
     private static int _lastCacheCount = 0;
 
     static final FunctionTrigger<Boolean> onCommitChangesToStorage = new FunctionTrigger<>();
-    private static Function1<Boolean[], Boolean> onCommitChangesToStorageInvoker = FunctionTrigger.getInvoker(onCommitChangesToStorage);
+    private static final Function1<Boolean[], Boolean> onCommitChangesToStorageInvoker = FunctionTrigger.getInvoker(onCommitChangesToStorage);
 
     private static boolean _commitChangesToStorage() {
         synchronized (_caches) {
@@ -42,13 +43,8 @@ public final class CacheController {
 
                 if (file.exists() && (!file.isFile() || !file.delete())) return false;
 
-                FileOutputStream output = null;
-
-                try {
-                    output = new FileOutputStream(file);
+                try (FileOutputStream output = new FileOutputStream(file)) {
                     _defaultSerializer.serialize(output, _caches);
-                } finally {
-                    if (output != null) output.close();
                 }
 
                 _lastCacheCount = _caches.size();
@@ -57,27 +53,30 @@ public final class CacheController {
                 return false;
             }
         }
-    };
+    }
 
     private static void _storingTask() {
         try {
 
+            //noinspection InfiniteLoopStatement
             while (true) {
 
+                //noinspection ConstantConditions
                 setPersistent(onCommitChangesToStorageInvoker.run(new Boolean[] { true }));
-                Thread.currentThread().join(100);
+                Parallel.sleep(100);
             }
-        } catch (InterruptedException e) {
+        } catch (InterruptedException ignored) {
         }
-    };
+    }
 
     private CacheController() {
 
         try {
 
-            if (!isPersistent() && getDeleteIfNotPersistent()) getCacheDirectory().delete(true);
+            if (!isPersistent() && getDeleteIfNotPersistent()) //noinspection ResultOfMethodCallIgnored
+                getCacheDirectory().delete(true);
 
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
 
         try {
@@ -100,34 +99,28 @@ public final class CacheController {
 
                 if (file.exists() && file.isFile()) {
 
-                    FileInputStream input = null;
-
-                    try {
-                        input = new FileInputStream(file);
+                    try (FileInputStream input = new FileInputStream(file)) {
 
                         AllocationJson json = _defaultSerializer.deserialize(input, AllocationJson.class);
 
                         for (String key : json.keySet()) {
                             _caches.put(key, json.get(key));
+                            //noinspection ConstantConditions
                             _currentFileIndex = Math.max(_currentFileIndex, json.get(key));
                         }
-                    } finally {
-                        if (input != null) input.close();
                     }
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
         }
 
-        onCommitChangesToStorage.add(() -> _commitChangesToStorage());
+        onCommitChangesToStorage.add(CacheController::_commitChangesToStorage);
 
         Parallel.start(state -> _storingTask(), null, false);
     }
 
-    private static CacheController signature = new CacheController();
-
-    static ActionEvent<Long> onCleanup = new ActionEvent<>();
-    private static Action1<Long> onCleanupInvoker = ActionEvent.getInvoker(onCleanup);
+    static final ActionEvent<Long> onCleanup = new ActionEvent<>();
+    private static final Action1<Long> onCleanupInvoker = ActionEvent.getInvoker(onCleanup);
 
     /**
      * Gets directory where all caching data to be stored. This method blocks calling thread until
@@ -159,10 +152,11 @@ public final class CacheController {
                (new File(getCacheDirectory() + "/.delay")).writeAllBytes(new byte[0]);
            }
            else {
+               //noinspection ResultOfMethodCallIgnored
                (new File(getCacheDirectory() + "/.delay")).delete();
            }
        }
-       catch (Exception e) {
+       catch (Exception ignored) {
        }
     }
 
@@ -182,6 +176,7 @@ public final class CacheController {
                 _caches.put(key, ++_currentFileIndex);
             }
 
+            //noinspection ConstantConditions
             return _caches.get(key);
         }
     }
@@ -227,7 +222,7 @@ public final class CacheController {
      * @param mode caching mode to be set
      */
     public static void setMode(CachingMode mode) {
-        StoredStates.set(CacheController.class, "caching-mode", (int)(mode == CachingMode.Static ? 0 : 1));
+        StoredStates.set(CacheController.class, "caching-mode", (mode == CachingMode.Static ? 0 : 1));
     }
 
     public static boolean getDeleteIfNotPersistent() {
@@ -244,6 +239,7 @@ public final class CacheController {
      */
     public static void clearAll(long stamp) {
         lastCleanupStamp = stamp;
+        //noinspection ConstantConditions
         onCleanupInvoker.run(lastCleanupStamp);
     }
 

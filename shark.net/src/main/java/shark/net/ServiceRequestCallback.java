@@ -1,6 +1,7 @@
 package shark.net;
 
+@SuppressWarnings("WeakerAccess")
 @FunctionalInterface
 public interface ServiceRequestCallback<T> {
-    public void run(RequestResult result, T response, Object state);
+    void run(RequestResult result, T response, Object state);
 }

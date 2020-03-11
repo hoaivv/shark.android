@@ -11,9 +11,10 @@ import shark.Framework;
 import shark.io.File;
 import shark.utils.Log;
 
+@SuppressWarnings("WeakerAccess")
 public class StoredStates {
 
-    private static HashMap<String, byte[]> _states = new HashMap<>();
+    private static final HashMap<String, byte[]> _states = new HashMap<>();
     private static boolean isLoaded = false;
 
     private StoredStates() {
@@ -54,9 +55,10 @@ public class StoredStates {
                         "Failed to load states");
             } finally {
 
+                //noinspection ConstantConditions
                 if (reader != null) try {
                     reader.close();
-                } catch (IOException ioe) {
+                } catch (IOException ignored) {
                 }
             }
         } else {
@@ -65,7 +67,7 @@ public class StoredStates {
 
     }
 
-    private static StoredStates signature = new StoredStates();
+    private static final StoredStates signature = new StoredStates();
 
     public static boolean isLoaded() {
         return isLoaded;
@@ -81,10 +83,10 @@ public class StoredStates {
         if (!isLoaded) return false;
 
         synchronized (signature) {
-            String data = "";
+            StringBuilder data = new StringBuilder();
 
             for (String key : _states.keySet()) {
-                data += Base64.encodeToString(key.getBytes(), Base64.NO_WRAP) + ":" + Base64.encodeToString(_states.get(key), Base64.NO_WRAP) + "\n";
+                data.append(Base64.encodeToString(key.getBytes(), Base64.NO_WRAP)).append(":").append(Base64.encodeToString(_states.get(key), Base64.NO_WRAP)).append("\n");
             }
 
             try {
@@ -204,6 +206,7 @@ public class StoredStates {
         return set(owner, name, value.getBytes());
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public static boolean set(Class<?> owner, String name, boolean value) {
         return set(owner, name, new byte[] { value ? (byte)1 : 0 });
     }
@@ -213,18 +216,18 @@ public class StoredStates {
     }
 
     public static boolean set(Class<?> owner, String name, int value) {
-        return set(owner, name, ByteBuffer.allocate(Integer.BYTES).putInt(value).array());
+        return set(owner, name, ByteBuffer.allocate(4).putInt(value).array());
     }
 
     public static boolean set(Class<?> owner, String name, long value) {
-        return set(owner, name, ByteBuffer.allocate(Long.BYTES).putLong(value).array());
+        return set(owner, name, ByteBuffer.allocate(8).putLong(value).array());
     }
 
     public static boolean set(Class<?> owner, String name, float value) {
-        return set(owner, name, ByteBuffer.allocate(Float.BYTES).putFloat(value).array());
+        return set(owner, name, ByteBuffer.allocate(4).putFloat(value).array());
     }
 
     public static boolean set(Class<?> owner, String name, double value) {
-        return set(owner, name, ByteBuffer.allocate(Double.BYTES).putDouble(value).array());
+        return set(owner, name, ByteBuffer.allocate(8).putDouble(value).array());
     }
 }

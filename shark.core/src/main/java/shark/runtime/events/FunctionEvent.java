@@ -1,12 +1,13 @@
 package shark.runtime.events;
 
+import java.util.Collections;
 import java.util.HashSet;
 
 import shark.delegates.Function1;
 import shark.delegates.Function2;
 
 /**
- * Decribes an event which provides one argument to its listeners and expects return from the
+ * Describes an event which provides one argument to its listeners and expects return from the
  * listeners
  * @param <T> type of event argument to be passed to listeners
  * @param <R> type of value to be returned by listeners
@@ -14,9 +15,10 @@ import shark.delegates.Function2;
  * @see ActionTrigger
  * @see FunctionTrigger
  */
+@SuppressWarnings("WeakerAccess")
 public final class FunctionEvent<T,R> {
 
-    private HashSet<Function1<T,R>> handlers = new HashSet<>();
+    private final HashSet<Function1<T,R>> handlers = new HashSet<>();
     private boolean invokerAllocated = false;
 
     /**
@@ -67,7 +69,7 @@ public final class FunctionEvent<T,R> {
      * Gets invoker of an event. This method could only be called once per event to ensure only the
      * owner of the event has access to its invoker
      * @param event event, invoker of which to be returned
-     * @param <T> type of event argment
+     * @param <T> type of event argument
      * @param <R> type of return state of event handler
      * @return invoker of the event on the first call; otherwise null
      */
@@ -92,7 +94,7 @@ public final class FunctionEvent<T,R> {
             if (allowedStates.length == 0) return false;
 
             HashSet<R> states = new HashSet<>();
-            for (R state : allowedStates) states.add(state);
+            Collections.addAll(states, allowedStates);
 
             synchronized (event.handlers) {
                 for (Function1<T,R> handler : event.handlers) if (!states.contains(handler.run(eventArgs))) return false;

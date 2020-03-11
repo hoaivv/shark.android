@@ -14,7 +14,7 @@ public @interface SharkService {
 
     /**
      * Name of the service
-     * @return
+     * @return service name
      */
     String value();
 }

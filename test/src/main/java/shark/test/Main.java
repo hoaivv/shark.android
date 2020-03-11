@@ -7,6 +7,7 @@ import android.webkit.WebView;
 import shark.Framework;
 import shark.utils.http;
 
+@SuppressWarnings("ALL")
 public class Main extends Activity {
 
     class SongDTO {

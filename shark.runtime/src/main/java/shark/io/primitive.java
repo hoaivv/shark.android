@@ -46,7 +46,7 @@ public final class primitive {
      */
     public static int readInt(InputStream input) throws IOException {
 
-        return ByteBuffer.wrap(readBytes(input, Integer.BYTES)).getInt();
+        return ByteBuffer.wrap(readBytes(input, 4)).getInt();
     }
 
     /**
@@ -57,7 +57,7 @@ public final class primitive {
      */
     public static long readLong(InputStream input) throws IOException {
 
-        return ByteBuffer.wrap(readBytes(input, Long.BYTES)).getLong();
+        return ByteBuffer.wrap(readBytes(input, 8)).getLong();
     }
 
     /**
@@ -68,7 +68,7 @@ public final class primitive {
      */
     public static float readFloat(InputStream input) throws IOException {
 
-        return ByteBuffer.wrap(readBytes(input, Float.BYTES)).getFloat();
+        return ByteBuffer.wrap(readBytes(input, 4)).getFloat();
     }
 
     /**
@@ -78,7 +78,7 @@ public final class primitive {
      * @throws IOException throws if the reading operation is failed
      */
     public static double readDouble(InputStream input) throws IOException {
-        return ByteBuffer.wrap(readBytes(input, Double.BYTES)).getDouble();
+        return ByteBuffer.wrap(readBytes(input, 8)).getDouble();
     }
 
     /**
@@ -99,7 +99,7 @@ public final class primitive {
      */
     public static void write(OutputStream output, int value) throws IOException {
 
-        output.write(ByteBuffer.allocate(Integer.BYTES).putInt(value).array());
+        output.write(ByteBuffer.allocate(4).putInt(value).array());
     }
 
     /**
@@ -110,7 +110,7 @@ public final class primitive {
      */
     public static void write(OutputStream output, long value) throws IOException {
 
-        output.write(ByteBuffer.allocate(Long.BYTES).putLong(value).array());
+        output.write(ByteBuffer.allocate(8).putLong(value).array());
     }
 
     /**
@@ -121,7 +121,7 @@ public final class primitive {
      */
     public static void write(OutputStream output, float value) throws IOException {
 
-        output.write(ByteBuffer.allocate(Float.BYTES).putFloat(value).array());
+        output.write(ByteBuffer.allocate(4).putFloat(value).array());
     }
 
     /**
@@ -132,6 +132,6 @@ public final class primitive {
      */
     public static void write(OutputStream output, double value) throws IOException {
 
-        output.write(ByteBuffer.allocate(Double.BYTES).putDouble(value).array());
+        output.write(ByteBuffer.allocate(8).putDouble(value).array());
     }
 }

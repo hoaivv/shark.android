@@ -1,5 +1,6 @@
 package shark.messenger;
 
+@SuppressWarnings("WeakerAccess")
 public interface MessengerTarget {
-    public String getPushKey();
+    String getPushKey();
 }

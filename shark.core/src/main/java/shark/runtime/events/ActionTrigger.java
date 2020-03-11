@@ -11,9 +11,10 @@ import shark.delegates.Action;
  * @see FunctionTrigger
  * @see FunctionEvent
  */
+@SuppressWarnings("ALL")
 public final class ActionTrigger {
 
-    private HashSet<Action> handlers = new HashSet<>();
+    private final HashSet<Action> handlers = new HashSet<>();
     private boolean invokerAllocated = false;
     /**
      * Indicates whether the event is listened or not

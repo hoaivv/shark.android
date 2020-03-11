@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
 public @interface SharkServiceAlternativeName {
     /**
      * Alternative names of the service
-     * @return
+     * @return service aliases
      */
     String[] value();
 }

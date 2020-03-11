@@ -4,7 +4,7 @@ public enum ConnectionCloseReason {
     Unknown,
     Disposed,
     RequestedByRemoteMachine,
-    ErrorDurringProcessing,
+    ErrorDuringProcessing,
     Normal,
     PingingFailed,
     Timeout,

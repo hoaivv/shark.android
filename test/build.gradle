@@ -8,6 +8,7 @@ android {
     defaultConfig {
         applicationId "shark.test"
         minSdkVersion 22
+        //noinspection OldTargetApi
         targetSdkVersion 28
         versionCode 1
         versionName "1.0"

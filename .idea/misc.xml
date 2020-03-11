@@ -1,5 +1,317 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="EntryPointsManager">
+    <entry_points version="2.0">
+      <entry_point TYPE="field" FQNAME="shark.net.RequestResult Aborted" />
+      <entry_point TYPE="field" FQNAME="shark.net.ConnectionState Active" />
+      <entry_point TYPE="field" FQNAME="shark.net.ConnectionState Closed" />
+      <entry_point TYPE="field" FQNAME="shark.net.ConnectionState Closing" />
+      <entry_point TYPE="field" FQNAME="shark.net.RequestResult ConnectionError" />
+      <entry_point TYPE="field" FQNAME="shark.net.data.ConnectionCloseReason ConnectionInterrupted" />
+      <entry_point TYPE="field" FQNAME="shark.messenger.MessengerClient.PullResponse Data" />
+      <entry_point TYPE="field" FQNAME="shark.messenger.MessengerClient.RegisterResponse Data" />
+      <entry_point TYPE="field" FQNAME="shark.messenger.MessengerClient.PushResponse Data" />
+      <entry_point TYPE="field" FQNAME="shark.messenger.MessengerClient.ChannelsResponse Data" />
+      <entry_point TYPE="field" FQNAME="shark.messenger.MessengerClient.ResourceNamesResponse Data" />
+      <entry_point TYPE="field" FQNAME="shark.messenger.MessengerPackage Data" />
+      <entry_point TYPE="field" FQNAME="shark.net.data.ConnectionCloseReason Destroying" />
+      <entry_point TYPE="field" FQNAME="shark.net.data.ConnectionCloseReason Disposed" />
+      <entry_point TYPE="field" FQNAME="shark.net.data.ConnectionCloseReason ErrorDuringChecking" />
+      <entry_point TYPE="field" FQNAME="shark.net.data.ConnectionCloseReason ErrorDuringProcessing" />
+      <entry_point TYPE="field" FQNAME="shark.net.data.ConnectionCloseReason ErrorDuringReading" />
+      <entry_point TYPE="field" FQNAME="shark.net.data.ConnectionCloseReason ErrorDuringWriting" />
+      <entry_point TYPE="field" FQNAME="shark.net.ConnectionState Handshaking" />
+      <entry_point TYPE="field" FQNAME="shark.net.ConnectionState Initializing" />
+      <entry_point TYPE="field" FQNAME="shark.Framework log" />
+      <entry_point TYPE="field" FQNAME="shark.net.RequestResult MalformedRequestData" />
+      <entry_point TYPE="field" FQNAME="shark.net.RequestResult MalformedResponseData" />
+      <entry_point TYPE="field" FQNAME="shark.net.data.ConnectionCloseReason Normal" />
+      <entry_point TYPE="field" FQNAME="shark.net.RequestResult NotAllowed" />
+      <entry_point TYPE="field" FQNAME="shark.net.RequestResult NotConnected" />
+      <entry_point TYPE="field" FQNAME="shark.net.RequestResult NotProceed" />
+      <entry_point TYPE="field" FQNAME="shark.net.RequestResult OK" />
+      <entry_point TYPE="field" FQNAME="shark.net.data.ConnectionCloseReason PingingFailed" />
+      <entry_point TYPE="field" FQNAME="shark.net.RequestResult Proceed" />
+      <entry_point TYPE="field" FQNAME="shark.net.RequestResult Processing" />
+      <entry_point TYPE="field" FQNAME="shark.net.RequestResult ProcessingError" />
+      <entry_point TYPE="field" FQNAME="shark.net.RequestResult ProtocolError" />
+      <entry_point TYPE="field" FQNAME="shark.net.data.ConnectionCloseReason ProtocolViolation" />
+      <entry_point TYPE="field" FQNAME="shark.messenger.MessengerPackage PushStamp" />
+      <entry_point TYPE="field" FQNAME="shark.net.data.ConnectionClosedEventArgs remoteServer" />
+      <entry_point TYPE="field" FQNAME="shark.net.data.ConnectionCloseReason RequestedByApplication" />
+      <entry_point TYPE="field" FQNAME="shark.net.data.ConnectionCloseReason RequestedByRemoteMachine" />
+      <entry_point TYPE="field" FQNAME="shark.net.RequestResult RequestIsNotTransportable" />
+      <entry_point TYPE="field" FQNAME="shark.components.ServiceDataTypes ResponseData" />
+      <entry_point TYPE="field" FQNAME="shark.net.RequestResult ResponseIsNotTransportable" />
+      <entry_point TYPE="field" FQNAME="shark.messenger.MessengerChannel Stamp" />
+      <entry_point TYPE="field" FQNAME="shark.net.ConnectionState Starting" />
+      <entry_point TYPE="field" FQNAME="shark.messenger.MessengerResponse Succeed" />
+      <entry_point TYPE="field" FQNAME="shark.net.data.ConnectionCloseReason Timeout" />
+      <entry_point TYPE="field" FQNAME="shark.messenger.MessengerPackage Type" />
+      <entry_point TYPE="field" FQNAME="shark.net.data.ConnectionCloseReason Unknown" />
+      <entry_point TYPE="field" FQNAME="shark.net.ConnectionState Unknown" />
+      <entry_point TYPE="field" FQNAME="shark.components.ServiceDataTypes Unknown" />
+      <entry_point TYPE="field" FQNAME="shark.net.RequestResult UnrecognizedService" />
+    </entry_points>
+    <pattern value="shark.runtime.Cache" method="clear" />
+    <pattern value="shark.runtime.Automations" method="countRunning" />
+    <pattern value="shark.runtime.Automations" method="isRegistered" />
+    <pattern value="shark.runtime.Cache" />
+    <pattern value="shark.runtime.Cache" method="delete" />
+    <pattern value="shark.runtime.Cache" method="entries" />
+    <pattern value="shark.runtime.Cache" method="get" />
+    <pattern value="shark.runtime.Cache" method="getCreationStampUtc" />
+    <pattern value="shark.runtime.Cache" method="getLastEntryModifiedUtc" />
+    <pattern value="shark.runtime.Cache" method="getLastModifiedUtc" />
+    <pattern value="shark.runtime.Cache" method="hasAll" />
+    <pattern value="shark.runtime.Cache" method="hasAny" />
+    <pattern value="shark.runtime.Cache" method="indexes" />
+    <pattern value="shark.runtime.Cache" method="isReady" />
+    <pattern value="shark.runtime.Cache" method="retrieve" />
+    <pattern value="shark.runtime.Cache" method="setSerializer" />
+    <pattern value="shark.runtime.Cache" method="size" />
+    <pattern value="shark.runtime.Cache" method="update" />
+    <pattern value="shark.runtime.AsyncOperationState" method="getException" />
+    <pattern value="shark.runtime.AsyncOperationState" method="isFailed" />
+    <pattern value="shark.runtime.AsyncOperationState" method="registerCallback" />
+    <pattern value="shark.runtime.CacheController" method="clearAll" />
+    <pattern value="shark.runtime.CacheController" method="setDefaultSerializer" />
+    <pattern value="shark.runtime.CacheController" method="setDeleteIfNotPersistent" />
+    <pattern value="shark.runtime.CacheController" method="setMode" />
+    <pattern value="shark.runtime.CacheController" method="size" />
+    <pattern value="shark.runtime.CacheEntry" method="delete" />
+    <pattern value="shark.runtime.CacheEntry" method="finalize" />
+    <pattern value="shark.runtime.CacheEntry" method="getTypeScopeUniqueIdentifier" />
+    <pattern value="shark.runtime.CacheEntry" method="getTypeScopeUniqueInstance" />
+    <pattern value="shark.runtime.CacheEntry" method="isDeletedOrNotInitialized" />
+    <pattern value="shark.runtime.CacheEntry" method="isLoaded" />
+    <pattern value="shark.runtime.CacheEntry" method="toString" />
+    <pattern value="shark.runtime.CacheEntry" method="update" />
+    <pattern value="shark.net.ServiceRequestState._CallbackConverterInfo" />
+    <pattern value="shark.net.ServiceRequestState._CallbackConverterInfo" method="_CallbackConverterInfo" />
+    <pattern value="shark.net.ServiceRequestState" method="_notifyFailure" />
+    <pattern value="shark.net.ServiceRequestState" method="_notifyStart" />
+    <pattern value="shark.net.ServiceRequestState" method="_notifySuccess" />
+    <pattern value="shark.runtime.Locker" method="acquire" />
+    <pattern value="shark.runtime.events.FunctionEvent" method="add" />
+    <pattern value="shark.io.File" method="appendAllText" />
+    <pattern value="shark.utils.http.Request" method="body" />
+    <pattern value="shark.runtime.CacheEntryModifiedEventArgs" />
+    <pattern value="shark.messenger.MessengerClient.ChannelsResponse" />
+    <pattern value="shark.net.Connection" />
+    <pattern value="shark.net.data.ConnectionClosedEventArgs" />
+    <pattern value="shark.net.data.ConnectionClosedEventArgs" method="ConnectionClosedEventArgs" />
+    <pattern value="shark.net.data.ConnectionCloseReason" />
+    <pattern value="shark.net.data.ConnectionEventArgs" />
+    <pattern value="shark.net.data.ConnectionEventArgs" method="ConnectionEventArgs" />
+    <pattern value="shark.net.ConnectionState" />
+    <pattern value="shark.io.File" method="convert" />
+    <pattern value="shark.io.File" method="createTempFile" />
+    <pattern value="shark.messenger.MessengerClient" method="delete" />
+    <pattern value="shark.Framework" method="deleteLogs" />
+    <pattern value="shark.components.ServiceHandler" method="determineResponseCachingTime" />
+    <pattern value="shark.runtime.Parallel" method="each" />
+    <pattern value="shark.utils.Log" method="error" />
+    <pattern value="shark.io.File" />
+    <pattern value="shark.io.File" method="File" />
+    <pattern value="shark.Framework" />
+    <pattern value="shark.delegates.Function3" />
+    <pattern value="shark.runtime.events.FunctionEvent" />
+    <pattern value="shark.runtime.events.FunctionEvent" method="FunctionEvent" />
+    <pattern value="shark.runtime.events.FunctionTrigger" />
+    <pattern value="shark.runtime.Services" method="get" />
+    <pattern value="shark.utils.http" method="get" />
+    <pattern value="shark.io.File" method="getAbsoluteFile" />
+    <pattern value="shark.runtime.CacheEntryModifiedEventArgs" method="getAction" />
+    <pattern value="shark.runtime.Service" method="getAlternativeNames" />
+    <pattern value="shark.runtime.Service" method="getAverageExecutionTime" />
+    <pattern value="shark.runtime.StoredStates" method="getByte" />
+    <pattern value="shark.io.File" method="getCanonicalFile" />
+    <pattern value="shark.net.data.ConnectionEventArgs" method="getConnection" />
+    <pattern value="shark.runtime.Service" method="getDataClass" />
+    <pattern value="shark.components.InvalidServiceDataException" method="getDataType" />
+    <pattern value="shark.runtime.serialization.Serializer" method="getDefault" />
+    <pattern value="shark.messenger.MessengerClient" method="getDescription" />
+    <pattern value="shark.runtime.StoredStates" method="getDouble" />
+    <pattern value="shark.runtime.CacheEntryModifiedEventArgs" method="getEntry" />
+    <pattern value="shark.runtime.IAsyncOperationState" method="getException" />
+    <pattern value="shark.runtime.Service" method="getExecutionCount" />
+    <pattern value="shark.runtime.ServiceExecutionResult" method="getExecutionResult" />
+    <pattern value="shark.net.ServiceRequestState" method="getExpecting" />
+    <pattern value="shark.runtime.StoredStates" method="getFloat" />
+    <pattern value="shark.runtime.Service" method="getInvocationCount" />
+    <pattern value="shark.runtime.events.FunctionEvent" method="getInvoker" />
+    <pattern value="shark.Framework" method="getLogs" />
+    <pattern value="shark.runtime.StoredStates" method="getLong" />
+    <pattern value="shark.runtime.Parallel" method="getMaxNumberOfQueueProcessingThreads" />
+    <pattern value="shark.runtime.Services" method="getOriginalName" />
+    <pattern value="shark.io.File" method="getParentFile" />
+    <pattern value="shark.runtime.Parallel" method="getPendingTaskCount" />
+    <pattern value="shark.runtime.ServiceExecutionResult" method="getProceedRequest" />
+    <pattern value="shark.runtime.Parallel" method="getProcessingThreadCount" />
+    <pattern value="shark.messenger.MessengerPackage" method="getPushTime" />
+    <pattern value="shark.runtime.Parallel" method="getQueueProcessingThreadCreationThreshold" />
+    <pattern value="shark.runtime.Parallel" method="getQueueProcessingThreadTerminationThreshold" />
+    <pattern value="shark.net.data.ConnectionClosedEventArgs" method="getReason" />
+    <pattern value="shark.net.data.ConnectionClosedEventArgs" method="getRemoteServer" />
+    <pattern value="shark.messenger.MessengerClient" method="getResource" />
+    <pattern value="shark.messenger.MessengerClient" method="getResourceNames" />
+    <pattern value="shark.net.ServiceRequestState" method="getResult" />
+    <pattern value="shark.runtime.Service" method="getReturnClass" />
+    <pattern value="shark.runtime.Workers" method="getRunningWorkerCount" />
+    <pattern value="shark.messenger.MessengerClient" method="getServer" />
+    <pattern value="shark.utils.http.Response" method="getString" />
+    <pattern value="shark.runtime.StoredStates" method="getString" />
+    <pattern value="shark.runtime.Operator" method="getTaskCount" />
+    <pattern value="shark.runtime.Service" method="getTotalExecutionTime" />
+    <pattern value="shark.runtime.Parallel" method="getWaitingTaskCount" />
+    <pattern value="shark.runtime.events.FunctionEvent" method="hasHandler" />
+    <pattern value="shark.runtime.events.FunctionTrigger" method="hasHandler" />
+    <pattern value="shark.Framework" method="hasLogs" />
+    <pattern value="shark.utils.http.Request" method="header" />
+    <pattern value="shark.utils.http" />
+    <pattern value="shark.runtime.IAsyncOperationState" />
+    <pattern value="shark.runtime.Parallel.LoopCounter" />
+    <pattern value="shark.messenger.MessengerChannel" />
+    <pattern value="shark.messenger.MessengerPackage" />
+    <pattern value="shark.messenger.MessengerClient.PullResponse" />
+    <pattern value="shark.messenger.MessengerClient.PushResponse" />
+    <pattern value="shark.messenger.MessengerClient.RegisterResponse" />
+    <pattern value="shark.messenger.MessengerClient.ResourceNamesResponse" />
+    <pattern value="shark.utils.Log" method="information" />
+    <pattern value="shark.components.InvalidServiceDataException" />
+    <pattern value="shark.components.InvalidServiceDataException" method="InvalidServiceDataException" />
+    <pattern value="shark.runtime.Service" method="is" />
+    <pattern value="shark.runtime.Worker" method="isAutomation" />
+    <pattern value="shark.runtime.IAsyncOperationState" method="isCompleted" />
+    <pattern value="shark.runtime.IAsyncOperationState" method="isFailed" />
+    <pattern value="shark.Framework" method="isInitialised" />
+    <pattern value="shark.runtime.StoredStates" method="isLoaded" />
+    <pattern value="shark.runtime.Parallel" method="isMainThread" />
+    <pattern value="shark.messenger.MessengerClient" method="isReady" />
+    <pattern value="shark.runtime.TaskState" method="isRunning" />
+    <pattern value="shark.runtime.Worker" method="isStarting" />
+    <pattern value="shark.runtime.IAsyncOperationState" method="isWaiting" />
+    <pattern value="shark.io.File" method="listFiles" />
+    <pattern value="shark.io.File" method="listRoots" />
+    <pattern value="shark.runtime.Locker" />
+    <pattern value="shark.runtime.Locker" method="Locker" />
+    <pattern value="shark.utils.Log" />
+    <pattern value="shark.runtime.Parallel" method="loop" />
+    <pattern value="shark.messenger.MessengerClient" />
+    <pattern value="shark.messenger.MessengerClient" method="MessengerClient" />
+    <pattern value="shark.messenger.MessengerResponse" />
+    <pattern value="shark.components.NotProceedServiceException" />
+    <pattern value="shark.components.NotProceedServiceException" method="NotProceedServiceException" />
+    <pattern value="shark.runtime.Operator" />
+    <pattern value="shark.runtime.Parallel" />
+    <pattern value="shark.utils.http" method="post" />
+    <pattern value="shark.io.primitive" />
+    <pattern value="shark.runtime.Service" method="process" />
+    <pattern value="shark.runtime.Service" method="processAsync" />
+    <pattern value="shark.runtime.Promise" />
+    <pattern value="shark.messenger.MessengerClient" method="publish" />
+    <pattern value="shark.messenger.MessengerClient.Puller" />
+    <pattern value="shark.messenger.MessengerClient.Puller" method="Puller" />
+    <pattern value="shark.messenger.MessengerClient" method="push" />
+    <pattern value="shark.runtime.Parallel" method="queue" />
+    <pattern value="shark.io.File" method="readAllBytes" />
+    <pattern value="shark.io.File" method="readAllText" />
+    <pattern value="shark.io.primitive" method="readByte" />
+    <pattern value="shark.io.primitive" method="readDouble" />
+    <pattern value="shark.io.primitive" method="readFloat" />
+    <pattern value="shark.io.primitive" method="readInt" />
+    <pattern value="shark.io.File" method="readObject" />
+    <pattern value="shark.messenger.MessengerClient" method="register" />
+    <pattern value="shark.runtime.IAsyncOperationState" method="registerCallback" />
+    <pattern value="shark.net.ServiceRequestState" method="registerCallback" />
+    <pattern value="shark.runtime.Locker" method="release" />
+    <pattern value="shark.runtime.events.FunctionEvent" method="remove" />
+    <pattern value="shark.runtime.events.FunctionTrigger" method="remove" />
+    <pattern value="shark.utils.http.Request" />
+    <pattern value="shark.net.RequestResult" />
+    <pattern value="shark.utils.http.Response" />
+    <pattern value="shark.runtime.Task" method="run" />
+    <pattern value="shark.delegates.Function3" method="run" />
+    <pattern value="shark.runtime.serialization.Serializer" />
+    <pattern value="shark.runtime.Service" />
+    <pattern value="shark.components.ServiceDataTypes" />
+    <pattern value="shark.components.ServiceException" />
+    <pattern value="shark.components.ServiceException" method="ServiceException" />
+    <pattern value="shark.runtime.ServiceExecutionResult" />
+    <pattern value="shark.runtime.ServiceExecutionResult" method="ServiceExecutionResult" />
+    <pattern value="shark.components.ServiceHandler" />
+    <pattern value="shark.components.ServiceRequestInfo" />
+    <pattern value="shark.components.ServiceRequestInfo" method="ServiceRequestInfo" />
+    <pattern value="shark.net.ServiceRequestState" />
+    <pattern value="shark.net.ServiceRequestState" method="ServiceRequestState" />
+    <pattern value="shark.runtime.Services" />
+    <pattern value="shark.runtime.StoredStates" method="set" />
+    <pattern value="shark.runtime.serialization.Serializer" method="setDefault" />
+    <pattern value="shark.runtime.Parallel" method="setMaxNumberOfQueueProcessingThreads" />
+    <pattern value="shark.runtime.Parallel" method="setQueueProcessingThreadCreationThreshold" />
+    <pattern value="shark.runtime.Parallel" method="setQueueProcessingThreadTerminationThreshold" />
+    <pattern value="shark.runtime.Workers" method="setStopTimeout" />
+    <pattern value="shark.runtime.Workers" method="setTaskSleepInterval" />
+    <pattern value="shark.runtime.Parallel" method="start" />
+    <pattern value="shark.Framework" method="stop" />
+    <pattern value="shark.runtime.StoredStates" />
+    <pattern value="shark.runtime.Task" />
+    <pattern value="shark.runtime.TaskState" />
+    <pattern value="shark.runtime.Locker" method="then" />
+    <pattern value="shark.runtime.Promise" method="then" />
+    <pattern value="shark.utils.Log" method="warning" />
+    <pattern value="shark.runtime.Worker" />
+    <pattern value="shark.runtime.Workers" />
+    <pattern value="shark.utils.Log" method="write" />
+    <pattern value="shark.io.primitive" method="write" />
+    <pattern value="shark.io.File" method="writeAllText" />
+    <pattern value="shark.io.File" method="writeObject" />
+    <pattern value="shark.messenger.MessengerChannel" method="getPushKey" />
+    <pattern value="shark.messenger.MessengerClient" method="getPushKey" />
+    <pattern value="shark.messenger.MessengerClient.Puller" method="run" />
+    <pattern value="shark.messenger.MessengerPackage" method="getPushKey" />
+    <pattern value="shark.components.ServiceHandler" method="computeIdentifier" />
+    <pattern value="shark.components.ServiceHandler" method="getDataClass" />
+    <pattern value="shark.components.ServiceHandler" method="getReturnClass" />
+    <pattern value="shark.components.ServiceHandler" method="process" />
+    <pattern value="shark.runtime.Operator.OperatorWorker" method="initialise" />
+  </component>
+  <component name="NullableNotNullManager">
+    <option name="myDefaultNullable" value="org.jetbrains.annotations.Nullable" />
+    <option name="myDefaultNotNull" value="androidx.annotation.RecentlyNonNull" />
+    <option name="myNullables">
+      <value>
+        <list size="10">
+          <item index="0" class="java.lang.String" itemvalue="org.jetbrains.annotations.Nullable" />
+          <item index="1" class="java.lang.String" itemvalue="javax.annotation.Nullable" />
+          <item index="2" class="java.lang.String" itemvalue="javax.annotation.CheckForNull" />
+          <item index="3" class="java.lang.String" itemvalue="edu.umd.cs.findbugs.annotations.Nullable" />
+          <item index="4" class="java.lang.String" itemvalue="android.support.annotation.Nullable" />
+          <item index="5" class="java.lang.String" itemvalue="androidx.annotation.Nullable" />
+          <item index="6" class="java.lang.String" itemvalue="androidx.annotation.RecentlyNullable" />
+          <item index="7" class="java.lang.String" itemvalue="org.checkerframework.checker.nullness.qual.Nullable" />
+          <item index="8" class="java.lang.String" itemvalue="org.checkerframework.checker.nullness.compatqual.NullableDecl" />
+          <item index="9" class="java.lang.String" itemvalue="org.checkerframework.checker.nullness.compatqual.NullableType" />
+        </list>
+      </value>
+    </option>
+    <option name="myNotNulls">
+      <value>
+        <list size="9">
+          <item index="0" class="java.lang.String" itemvalue="org.jetbrains.annotations.NotNull" />
+          <item index="1" class="java.lang.String" itemvalue="javax.annotation.Nonnull" />
+          <item index="2" class="java.lang.String" itemvalue="edu.umd.cs.findbugs.annotations.NonNull" />
+          <item index="3" class="java.lang.String" itemvalue="android.support.annotation.NonNull" />
+          <item index="4" class="java.lang.String" itemvalue="androidx.annotation.NonNull" />
+          <item index="5" class="java.lang.String" itemvalue="androidx.annotation.RecentlyNonNull" />
+          <item index="6" class="java.lang.String" itemvalue="org.checkerframework.checker.nullness.qual.NonNull" />
+          <item index="7" class="java.lang.String" itemvalue="org.checkerframework.checker.nullness.compatqual.NonNullDecl" />
+          <item index="8" class="java.lang.String" itemvalue="org.checkerframework.checker.nullness.compatqual.NonNullType" />
+        </list>
+      </value>
+    </option>
+  </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_1_8" project-jdk-name="1.8" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/build/classes" />
   </component>

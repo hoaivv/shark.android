@@ -8,11 +8,11 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 
 /**
- * Json Serialier of Shark Framework
+ * Json Serializer of Shark Framework
  */
 public class JsonSerializer extends Serializer {
 
-    private static Gson gson = new Gson();
+    private static final Gson gson = new Gson();
 
     /**
      * Serializes an object and write the serialized data to a stream. This method to be used if
@@ -99,32 +99,24 @@ public class JsonSerializer extends Serializer {
 
         try {
 
-            String sPrefix = "";
+            StringBuilder sPrefix = new StringBuilder();
 
             while (true) {
                 int one = input.read();
 
                 if (one < 0 || (char) one == '.') break;
-                sPrefix += (char) one;
+                sPrefix.append((char) one);
             }
 
-            int length = Integer.parseInt(sPrefix);
+            int length = Integer.parseInt(sPrefix.toString());
             byte[] buffer = new byte[length];
 
             int count = 0;
             while (count < length) count += input.read(buffer, count, length - count);
 
-            InputStreamReader reader = null;
-
-            try {
-                reader = new InputStreamReader(new ByteArrayInputStream(buffer));
+            try (InputStreamReader reader = new InputStreamReader(new ByteArrayInputStream(buffer))) {
 
                 return gson.fromJson(reader, type);
-            }
-            finally {
-
-                if (reader != null) reader.close();
-                buffer = null;
             }
         }
         catch (Exception e) {

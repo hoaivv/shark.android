@@ -5,10 +5,10 @@ package shark.utils;
  */
 public class LogData {
 
-    private Class<?> owner;
-    private String trace;
-    private LogType type;
-    private String message;
+    private final Class<?> owner;
+    private final String trace;
+    private final LogType type;
+    private final String message;
 
     /**
      * Gets owner of the log
@@ -49,7 +49,7 @@ public class LogData {
      * @param type type of the log
      * @param message log's message
      */
-    public LogData(Class<?> owner, String trace, LogType type, String message) {
+    LogData(Class<?> owner, String trace, LogType type, String message) {
         this.owner = owner;
         this.trace = trace;
         this.type = type;

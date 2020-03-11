@@ -10,11 +10,12 @@ import shark.utils.Log;
 /**
  * Executes tasks and optimizes usage of threads for task execution.
  */
+@SuppressWarnings("WeakerAccess")
 public class Operator {
 
-    class TaskInfo {
-        public TaskState state;
-        public long stamp;
+    private class TaskInfo {
+        TaskState state;
+        long stamp;
     }
 
     /**
@@ -30,22 +31,16 @@ public class Operator {
         setThreadTerminationThreshold(threadTerminationThreshold);
     }
 
-    /**
-     * Create an operator
-     */
-    public Operator(){
-    }
-
     class OperatorWorker extends Worker {
 
-        public ArrayList<TaskInfo> pendingQueue = new ArrayList<>();
+        private final ArrayList<TaskInfo> pendingQueue = new ArrayList<>();
 
-        public LinkedList<TaskState> waitingQueue = new LinkedList<>();
+        private final LinkedList<TaskState> waitingQueue = new LinkedList<>();
 
-        public int threadCreationThreshold = 20;
-        public int threadTerminationThreshold = 100;
-        public int maxNumberOfThreads = 2;
-        public boolean isMainThreadRunning = false;
+        private int threadCreationThreshold = 20;
+        private int threadTerminationThreshold = 100;
+        private int maxNumberOfThreads = 2;
+        private boolean isMainThreadRunning = false;
 
         @Override
         protected void initialise() {
@@ -53,34 +48,33 @@ public class Operator {
             registerTask(_operator, null, true);
         }
 
-        private Task _operator = new Task() {
+        private final Task _operator = new Task() {
             @Override
             public void run(Object state) {
 
-                TaskInfo[] infos;
+                TaskInfo[] tasks;
 
                 int threadCreationPoint = 0;
                 int threadTerminationPoint = 0;
 
                 int lastCount = 0;
 
-                while (isRunning() && !isStopping()){
+                while (isRunning() && !isStopping()) {
 
                     synchronized (pendingQueue) {
-                        infos = pendingQueue.toArray(new TaskInfo[0]);
+                        tasks = pendingQueue.toArray(new TaskInfo[0]);
                         pendingQueue.clear();
                     }
 
                     long now = System.currentTimeMillis();
 
-                    for(final TaskInfo info : infos) {
+                    for (final TaskInfo info : tasks) {
                         if (info.stamp > now) {
 
                             synchronized (pendingQueue) {
                                 pendingQueue.add(info);
                             }
-                        }
-                        else {
+                        } else {
 
                             synchronized (waitingQueue) {
                                 waitingQueue.add(info.state);
@@ -93,20 +87,19 @@ public class Operator {
                         count = waitingQueue.size();
                     }
 
-                    if (count >= lastCount && getTaskCount() - 1 < maxNumberOfThreads) {
-                        if (getTaskCount() == 1 || ++threadCreationPoint >= threadCreationThreshold) {
+                    if (count >= lastCount && taskCount() - 1 < maxNumberOfThreads) {
+                        if (taskCount() == 1 || ++threadCreationPoint >= threadCreationThreshold) {
                             registerTask(_processor, null, true);
                             threadCreationPoint = 0;
                         }
-                    }
-                    else {
+                    } else {
                         threadCreationPoint = 0;
                     }
 
                     lastCount = count;
 
-                    if (count + infos.length == 0 && getTaskCount() == 1) {
-                        if (++threadTerminationPoint >= threadTerminationPoint) {
+                    if (count + tasks.length == 0 && taskCount() == 1) {
+                        if (++threadTerminationPoint >= threadTerminationThreshold) {
 
                             synchronized (pendingQueue) {
                                 synchronized (waitingQueue) {
@@ -117,50 +110,41 @@ public class Operator {
                                 }
                             }
                         }
-                    }
-                    else {
+                    } else {
                         threadTerminationPoint = 0;
                     }
 
-                    try {
-                        Thread.currentThread().join(Workers.getTaskSleepInterval());
-                    }
-                    catch (InterruptedException e){
-                        break;
-                    }
+                    try { Parallel.sleep(); } catch (InterruptedException ignored) { }
                 }
             }
         };
 
-        private Task _processor = new Task() {
-            @Override
-            public void run(Object state) {
+        private final Task _processor = state -> {
 
-                int threadTerminationPoint = 0;
+            int threadTerminationPoint = 0;
 
-                while (isRunning() && !isStopping())
+            while (isRunning() && !isStopping())
+            {
+                TaskState info;
+                synchronized (waitingQueue) {
+                    info = waitingQueue.size() > 0 ? waitingQueue.pop() : null;
+                }
+
+                if (info == null)
                 {
-                    TaskState info;
-                    synchronized (waitingQueue) {
-                        info = waitingQueue.size() > 0 ? waitingQueue.pop() : null;
+                    try {
+                        Parallel.sleep();
+                    }
+                    catch (InterruptedException e) {
+                        break;
                     }
 
-                    if (info == null)
-                    {
-                        try {
-                            Thread.currentThread().join(Workers.getTaskSleepInterval());
-                        }
-                        catch (InterruptedException e) {
-                            break;
-                        }
-
-                        if (++threadTerminationPoint >= threadTerminationThreshold) break;
-                    }
-                    else
-                    {
-                        threadTerminationPoint = 0;
-                        _runTask(info);
-                    }
+                    if (++threadTerminationPoint >= threadTerminationThreshold) break;
+                }
+                else
+                {
+                    threadTerminationPoint = 0;
+                    _runTask(info);
                 }
             }
         };
@@ -175,6 +159,7 @@ public class Operator {
             }
             catch (Exception e) {
 
+                //noinspection ConstantConditions
                 if (!InterruptedException.class.isAssignableFrom(e.getClass()) && Framework.log) {
                     Log.error(Operator.class,
                             "Error detected while processing task",
@@ -188,7 +173,7 @@ public class Operator {
         }
     }
 
-    private OperatorWorker _worker = new OperatorWorker();
+    private final OperatorWorker _worker = new OperatorWorker();
 
     /**
      * Gets threshold of thread creation
@@ -246,7 +231,7 @@ public class Operator {
      * @return number of threads
      */
     public int getThreadCount() {
-        return Math.max(0, _worker.getTaskCount() - 1);
+        return Math.max(0, _worker.taskCount() - 1);
     }
 
     /**
@@ -286,7 +271,7 @@ public class Operator {
      * @param invocationStamp time, after which the task should be executed
      * @return object, provides information about the task execution
      */
-    public TaskState queue(Task task, Object state, long invocationStamp) {
+    public TaskState queue(Task task, Object state, long invocationStamp) throws InterruptedException {
 
         if (task == null) throw new IllegalArgumentException("task");
 
@@ -302,12 +287,10 @@ public class Operator {
             isMainThreadRunning = _worker.isMainThreadRunning;
         }
 
-        try {
-            while (!isMainThreadRunning && _worker.isRunning()) Thread.currentThread().join(10);
-            if (!_worker.isRunning()) _worker.start();
-        }
-        catch (InterruptedException e){
-        }
+
+        while (!isMainThreadRunning && _worker.isRunning()) Parallel.sleep();
+        if (!_worker.isRunning()) _worker.start();
+
 
         return info.state;
     }
@@ -317,8 +300,11 @@ public class Operator {
      * @param task task to be executed
      * @param state object to be passed to the task
      * @return object, provides information about task execution
+     *
+     * @exception InterruptedException throws if the calling thread is interrupted be for the
+     * queueing operation is completed
      */
-    public TaskState queue(Task task, Object state) {
+    public TaskState queue(Task task, Object state) throws InterruptedException {
 
         if (task == null) throw new IllegalArgumentException("task");
 
@@ -331,12 +317,8 @@ public class Operator {
             isMainThreadRunning = _worker.isMainThreadRunning;
         }
 
-        try {
-            while (!isMainThreadRunning && _worker.isRunning()) Thread.currentThread().join(10);
-            if (!_worker.isRunning()) _worker.start();
-        }
-        catch (InterruptedException e){
-        }
+        while (!isMainThreadRunning && _worker.isRunning()) Parallel.sleep();
+        if (!_worker.isRunning()) _worker.start();
 
         return info;
     }
@@ -345,12 +327,15 @@ public class Operator {
      * Queues a task to be executed as soon as possible
      * @param task task to be executed
      * @return object, provides information about the task execution
+     *
+     * @exception InterruptedException throws if the calling thread is interrupted be for the
+     * queueing operation is completed
      */
-    public TaskState queue(Action task) {
+    public TaskState queue(Action task) throws InterruptedException {
 
         if (task == null) throw new IllegalArgumentException();
 
-        return queue(state -> ((Runnable)state).run(), task);
+        return queue(state -> ((Action)state).run(), task);
     }
 
     /**
@@ -358,11 +343,14 @@ public class Operator {
      * @param task task to be executed
      * @param invocationStamp time, after which the task should be executed
      * @return object, provides information about the task execution
+     *
+     * @exception InterruptedException throws if the calling thread is interrupted be for the
+     * queueing operation is completed
      */
-    public TaskState queue(Action task, long invocationStamp) {
+    public TaskState queue(Action task, long invocationStamp) throws InterruptedException {
 
         if (task == null) throw new IllegalArgumentException();
 
-        return queue(state -> ((Runnable)state).run(), task, invocationStamp);
+        return queue(state -> ((Action)state).run(), task, invocationStamp);
     }
 }

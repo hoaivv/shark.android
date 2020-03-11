@@ -7,8 +7,8 @@ import shark.components.IServiceRequestInfo;
  */
 public final class ServiceExecutionResult {
 
-    Object executionResult;
-    IServiceRequestInfo proceedRequest;
+    private final Object executionResult;
+    private final IServiceRequestInfo proceedRequest;
 
     ServiceExecutionResult(Object executionResult, IServiceRequestInfo proceedRequest){
         this.executionResult = executionResult;
@@ -21,6 +21,7 @@ public final class ServiceExecutionResult {
      * @return result of the executed service, casted to the specified type
      */
     public <T> T getExecutionResult(){
+        //noinspection unchecked
         return (T)executionResult;
     }
 

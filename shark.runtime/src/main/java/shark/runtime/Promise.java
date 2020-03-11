@@ -27,20 +27,17 @@ public final class Promise<T> {
             promise.resolverAllocated = true;
         }
 
-        return new Action1<T>() {
-            @Override
-            public void run(T arg) {
+        return arg -> {
 
-                synchronized (promise) {
+            synchronized (promise) {
 
-                    if (promise.resultAvailable) return;
+                if (promise.resultAvailable) return;
 
-                    promise.resultAvailable = true;
-                    promise.result = arg;
+                promise.resultAvailable = true;
+                promise.result = arg;
 
-                    if (promise.callback != null) {
-                        promise.callback.run(promise.result);
-                    }
+                if (promise.callback != null) {
+                    promise.callback.run(promise.result);
                 }
             }
         };
@@ -58,6 +55,7 @@ public final class Promise<T> {
      * @param data operation result
      */
     public Promise(T data) {
+        //noinspection ConstantConditions
         Promise.getResolver(this).run(data);
     }
 
@@ -77,7 +75,7 @@ public final class Promise<T> {
                 if (resultAvailable) return result;
             }
 
-            Thread.currentThread().join(10);
+            Parallel.sleep();
         }
     }
 
@@ -100,15 +98,17 @@ public final class Promise<T> {
      * @return an instance of {@link Promise}, which treats the provided task return data as its
      * operation result
      */
+    @SuppressWarnings("TypeParameterHidesVisibleType")
     public final <R> Promise<R> then(Function1<T, R> task){
 
         synchronized (this) {
 
-            Promise<R> promise = new Promise<R>();
+            Promise<R> promise = new Promise<>();
             Action1<R> resolver = Promise.getResolver(promise);
 
             if (task != null) {
 
+                //noinspection ConstantConditions
                 callback = data -> resolver.run(task.run(data));
                 if (resultAvailable) callback.run(result);
             }

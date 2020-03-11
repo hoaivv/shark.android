@@ -3,9 +3,10 @@ package shark.components;
 /**
  * Describes exceptions related to data format, occurred when Shark Service is required to process
  */
+@SuppressWarnings("WeakerAccess")
 public class InvalidServiceDataException extends ServiceException {
 
-    private ServiceDataTypes type;
+    private final ServiceDataTypes type;
 
     /**
      * Type of data related to the exception

@@ -1,8 +1,9 @@
 package shark.runtime.serialization;
 
 /**
- * Exception, throwed by {@link Serializer}
+ * Exception, throws by {@link Serializer}
  */
+@SuppressWarnings("WeakerAccess")
 public class SerializationException extends Exception {
 
     /**

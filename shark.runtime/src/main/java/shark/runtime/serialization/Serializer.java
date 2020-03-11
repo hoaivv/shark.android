@@ -8,11 +8,12 @@ import java.io.OutputStream;
  */
 public abstract class Serializer {
 
+    @SuppressWarnings("StaticInitializerReferencesSubClass")
     private static Serializer _default = new JsonSerializer();
 
     /**
      * Gets the default serializer used by Shark Framework
-     * @return
+     * @return default serializer
      */
     public static Serializer getDefault() {
         return _default;
@@ -20,7 +21,7 @@ public abstract class Serializer {
 
     /**
      * Sets a serializer as the default serializer of Shark Framework
-     * @param serializer
+     * @param serializer serializer to be set as default
      */
     public static void setDefault(Serializer serializer) {
         if (serializer != null) _default = serializer;

@@ -5,7 +5,7 @@ import java.util.HashSet;
 import shark.delegates.Action1;
 
 /**
- * Decribes an event which provides one argument to its listeners and expects no return from the listeners
+ * Describes an event which provides one argument to its listeners and expects no return from the listeners
  * @param <T> type of event argument to be passed to listeners
  * @see FunctionEvent
  * @see ActionTrigger
@@ -13,7 +13,7 @@ import shark.delegates.Action1;
  */
 public final class ActionEvent<T> {
 
-    private HashSet<Action1<T>> handlers = new HashSet<>();
+    private final HashSet<Action1<T>> handlers = new HashSet<>();
     private boolean invokerAllocated = false;
 
     /**
@@ -46,6 +46,7 @@ public final class ActionEvent<T> {
      * the event.
      * @param handler listener to be removed.
      */
+    @SuppressWarnings("unused")
     public final void remove(Action1<T> handler) {
         if (handler == null) throw new IllegalArgumentException("listener");
 

@@ -1,5 +1,7 @@
 package shark.runtime;
 
+import android.annotation.SuppressLint;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -14,14 +16,16 @@ public final class Services {
     private Services() {
     }
 
-    private static Services signature = new Services();
+    private static final Services signature = new Services();
 
-    private static HashMap<Integer, Service> _id2service = new HashMap<>();
-    private static HashMap<String, Service> _key2service = new HashMap<>();
-    private static HashMap<String, String> _alt2org = new HashMap<>();
+    @SuppressLint("UseSparseArrays")
+    private static final HashMap<Integer, Service> _id2service = new HashMap<>();
+    private static final HashMap<String, Service> _key2service = new HashMap<>();
+    private static final HashMap<String, String> _alt2org = new HashMap<>();
 
     private static int _nexRegistrationId = 1;
 
+    @SuppressWarnings("UnusedReturnValue")
     public static int register(IServiceHandler handler){
 
         synchronized (signature) {
@@ -47,6 +51,7 @@ public final class Services {
 
             String name = nameAnnotation.value();
 
+            //noinspection ConstantConditions
             if (name == null || name.length() == 0) {
                 if (Framework.debug) Log.warning(Services.class,
                         "Invalid registration",
@@ -67,13 +72,15 @@ public final class Services {
                 return 0;
             }
 
-            String key = name + dataClass.getName() + dataClass.getPackage().getName();
+            @SuppressWarnings("ConstantConditions") String key = name + dataClass.getName() + dataClass.getPackage().getName();
 
             if (_key2service.containsKey(key)) {
 
+                //noinspection ConstantConditions
                 if (_key2service.get(key).getHandlerClass() != handler.getClass()) {
 
-                    if (Framework.debug) Log.warning(Services.class,
+                    if (Framework.debug) //noinspection ConstantConditions
+                        Log.warning(Services.class,
                             "Invalid registration",
                             "Issue: Service name is already allocated for class " + _key2service.get(key).getHandlerClass(),
                             "Class: " + handler.getClass().getName());
@@ -87,6 +94,7 @@ public final class Services {
                             "Issue: duplicated registration",
                             "Class: " + handler.getClass().getName());
 
+                    //noinspection ConstantConditions
                     return _key2service.get(key).getId();
                 }
             }
@@ -99,11 +107,13 @@ public final class Services {
 
                 String[] alts = alternativeAnnotation.value();
 
+                //noinspection ConstantConditions
                 if (alts == null) alts = new String[0];
 
                 for (String alt : alts) {
 
-                    if (_alt2org.containsKey(alt) && _alt2org.get(alt) != name) {
+                    //noinspection ConstantConditions
+                    if (alt != null && _alt2org.containsKey(alt) && _alt2org.get(alt).compareTo(name) != 0) {
 
                         if (Framework.debug) Log.warning(Services.class,
                                 "Invalid registration",
@@ -146,7 +156,7 @@ public final class Services {
 
         if (name == null || name.length() == 0 || dataClass == null) return null;
 
-        final String key = name + dataClass.getName() + dataClass.getPackage().getName();
+        @SuppressWarnings("ConstantConditions") final String key = name + dataClass.getName() + dataClass.getPackage().getName();
 
         synchronized (signature) {
             return _key2service.containsKey(key) ? _key2service.get(key) : null;
@@ -158,11 +168,12 @@ public final class Services {
         if (name == null || name.length() == 0) return new Service[0];
 
         ArrayList<Service> results = new ArrayList<>();
-        for (Service s : getAll()) if (s.getName() == name) results.add(s);
+        for (Service s : getAll()) if (s.getName().compareTo(name) == 0) results.add(s);
 
         return results.toArray(new Service[0]);
     }
 
+    @SuppressWarnings("WeakerAccess")
     public static Service[] getAll() {
 
         synchronized (signature) {

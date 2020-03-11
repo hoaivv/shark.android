@@ -14,5 +14,6 @@ public interface Function2<T1,T2,R> {
      * @param arg1 parameter 1
      * @param arg2 parameter 2
      */
+    @SuppressWarnings("UnusedReturnValue")
     R run(T1 arg1, T2 arg2);
 }

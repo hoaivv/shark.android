@@ -4,6 +4,7 @@ import android.os.Looper;
 
 import com.google.gson.Gson;
 
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,6 +13,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 
 import shark.delegates.Action1;
@@ -35,7 +37,7 @@ public final class http {
 
     private http(){}
 
-    private static http singleton = new http();
+    private static final http singleton = new http();
 
     /**
      * If this property is {@code true}, {@code https://} will be added to target URL when no
@@ -44,6 +46,7 @@ public final class http {
      * added to target URL when no protocol is specified in it.
      * By default, this value is {@code false}
      */
+    @SuppressWarnings({"WeakerAccess", "CanBeFinal"})
     public static boolean useHttpsByDefault = false;
 
     /**
@@ -61,9 +64,9 @@ public final class http {
      */
     public final class Request {
 
-        private HashMap<String, String> headers = new HashMap<>();
+        private final HashMap<String, String> headers = new HashMap<>();
         private String method;
-        private String url;
+        private final String url;
         private byte[] body;
 
         /**
@@ -120,6 +123,7 @@ public final class http {
          * @param body body of the request
          * @return current request object
          */
+        @SuppressWarnings("WeakerAccess")
         public Request body(String mime, byte[] body) {
 
             headers.put("Content-Type", mime);
@@ -134,10 +138,11 @@ public final class http {
          * @param body object to be set as request body
          * @return current request object
          */
+        @SuppressWarnings("WeakerAccess")
         public Request body(Object body) {
 
             try {
-                return body("application/json", new Gson().toJson(body).getBytes("UTF-8"));
+                return body("application/json", new Gson().toJson(body).getBytes(StandardCharsets.UTF_8));
             }
             catch (Exception ex)
             {
@@ -159,6 +164,7 @@ public final class http {
             return send().then(response -> {
 
                 try {
+                    //noinspection unchecked
                     return expect == Response.class ? (T) response : response != null && response.getStatus() == 200 ? response.getObject(expect).result() : null;
                 }
                 catch (Exception e) {
@@ -172,6 +178,7 @@ public final class http {
          * @return instance of {@link Response} via {@link Promise} if succeed; otherwise null via
          * {@link Promise}
          */
+        @SuppressWarnings("WeakerAccess")
         public Promise<Response> send() {
 
             Promise<Response> promise = new Promise<>();
@@ -184,6 +191,7 @@ public final class http {
                 try {
                     target = new URL(url);
                 } catch (MalformedURLException e) {
+                    //noinspection ConstantConditions
                     resolver.run(null);
                     return;
                 }
@@ -218,10 +226,11 @@ public final class http {
                     try {
                         if (stream != null) stream.close();
                         if (connection != null) connection.disconnect();
-                    } catch (IOException io) {
+                    } catch (IOException ignored) {
                     }
                 }
 
+                //noinspection ConstantConditions
                 resolver.run(response);
             };
 
@@ -242,9 +251,10 @@ public final class http {
      * Describes a HTTP response. Instances of this class will be generated when a HTTP/HTTPS
      * requests are made and their responses become available.
      */
+    @SuppressWarnings("WeakerAccess")
     public final class Response implements Closeable {
 
-        HttpURLConnection connection = null;
+        HttpURLConnection connection;
 
         private Response(HttpURLConnection connection) throws IllegalArgumentException {
 
@@ -257,6 +267,7 @@ public final class http {
          * @return HTTP status code of the response
          * @throws IOException throws if the response is not valid
          */
+        @SuppressWarnings("WeakerAccess")
         public int getStatus() throws IOException {
             return connection.getResponseCode();
         }
@@ -276,12 +287,14 @@ public final class http {
          * @param <T> type of object to be extracted
          * @return an instance of provided type if succeed; otherwise null
          */
+        @SuppressWarnings("WeakerAccess")
         public <T> Promise<T> getObject(Class<T> type) {
 
             Promise<T> promise = new Promise<>();
             Action1<T> resolver = Promise.getResolver(promise);
 
             if (connection == null || type == null) {
+                //noinspection ConstantConditions
                 resolver.run(null);
                 return promise;
             }
@@ -293,14 +306,16 @@ public final class http {
                 try {
                     reader = new InputStreamReader(connection.getInputStream());
 
-                    resolver.run((T) new Gson().fromJson(reader, type));
+                    //noinspection ConstantConditions
+                    resolver.run(new Gson().fromJson(reader, type));
                 } catch (Exception e1) {
 
                     try {
                         if (reader != null) reader.close();
-                    } catch (Exception e2) {
+                    } catch (Exception ignored) {
                     }
 
+                    //noinspection ConstantConditions
                     resolver.run(null);
                 } finally {
                     close();
@@ -323,12 +338,14 @@ public final class http {
          * Gets response body as a byte array
          * @return response body as a byte array if succeed; otherwise null
          */
+        @SuppressWarnings("WeakerAccess")
         public Promise<byte[]> getBytes() {
 
             Promise<byte[]> promise = new Promise<>();
             Action1<byte[]> resolver = Promise.getResolver(promise);
 
             if (connection == null) {
+                //noinspection ConstantConditions
                 resolver.run(null);
                 return  promise;
             }
@@ -336,27 +353,32 @@ public final class http {
             Runnable commit = () -> {
 
                 InputStream stream = null;
+                ByteArrayOutputStream data = null;
 
                 try {
 
                     stream = connection.getInputStream();
+                    data = new ByteArrayOutputStream();
 
-                    int count = 0;
-                    byte[] data = new byte[connection.getContentLength()];
+                    int count;
+                    byte[] buffer = new byte[1024];
 
-                    while (count < data.length) {
-                        count += stream.read(data, count, data.length - count);
-                        if (count < data.length) Thread.sleep(10);
+                    while ((count = stream.read(buffer, 0, buffer.length)) > -1) {
+                        data.write(buffer, 0, count);
+                        if (count == 0) Thread.sleep(10);
                     }
 
-                    resolver.run(data);
+                    //noinspection ConstantConditions
+                    resolver.run(data.toByteArray());
                 } catch (Exception e1) {
 
                     try {
+                        if (data != null) data.close();
                         if (stream != null) stream.close();
-                    } catch (Exception e2) {
+                    } catch (Exception ignored) {
                     }
 
+                    //noinspection ConstantConditions
                     resolver.run(null);
                 } finally {
                     close();
@@ -385,7 +407,7 @@ public final class http {
 
             return getBytes().then(data -> {
                 try {
-                    return new String(data, "UTF-8");
+                    return new String(data, StandardCharsets.UTF_8);
                 }
                 catch (Exception e) {
                     return null;

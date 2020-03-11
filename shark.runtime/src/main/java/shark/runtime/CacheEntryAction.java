@@ -16,7 +16,7 @@ public enum  CacheEntryAction {
     Update,
 
     /**
-     * A cace entry is deleted
+     * A cache entry is deleted
      */
     Delete
 }

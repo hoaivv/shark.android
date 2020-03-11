@@ -2,9 +2,10 @@ package shark.net.data;
 
 import shark.net.Connection;
 
+@SuppressWarnings("WeakerAccess")
 public class ConnectionEventArgs {
 
-    private Connection connection;
+    private final Connection connection;
 
 
     public Connection getConnection() {

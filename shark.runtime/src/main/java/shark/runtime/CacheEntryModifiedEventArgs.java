@@ -5,10 +5,11 @@ package shark.runtime;
  * @param <TIndex> type of entry index
  * @param <TData> type of entry data
  */
+@SuppressWarnings("WeakerAccess")
 public class CacheEntryModifiedEventArgs<TIndex, TData> {
 
-    private CacheEntry<TIndex, TData> entry;
-    private CacheEntryAction action;
+    private final CacheEntry<TIndex, TData> entry;
+    private final CacheEntryAction action;
 
     /**
      * Gets the entry, which is modified

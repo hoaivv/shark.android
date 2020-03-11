@@ -13,6 +13,7 @@ public interface IServiceHandler extends ISharkComponent {
      * @return identifier of the request
      * @throws ServiceException throws if the request is not sufficient for the operation
      */
+    @SuppressWarnings("RedundantThrows")
     int computeIdentifier(IServiceRequestInfo request) throws ServiceException;
 
     /**
@@ -31,6 +32,7 @@ public interface IServiceHandler extends ISharkComponent {
      * @return service processing result
      * @throws ServiceException throws if error occurred while service is processing the request
      */
+    @SuppressWarnings("RedundantThrows")
     Object process(IServiceRequestInfo request) throws ServiceException;
 
     /**

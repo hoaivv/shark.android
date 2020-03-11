@@ -8,31 +8,36 @@ import shark.utils.Log;
 
 public abstract class Worker {
 
-    private HashSet<TaskState> _tasks = new HashSet<>();
+    private final HashSet<TaskState> _tasks = new HashSet<>();
 
     private boolean isRunning;
     private boolean isStarting;
     private boolean isStopping;
 
+    @SuppressWarnings("WeakerAccess")
     public Worker() {
         Workers.register(this);
     }
 
-    public int getTaskCount() {
+    @SuppressWarnings("WeakerAccess")
+    public int taskCount() {
 
         synchronized (_tasks) {
             return _tasks.size();
         }
     }
 
+    @SuppressWarnings("WeakerAccess")
     public boolean isRunning() {
         return isRunning;
     }
 
-    public boolean getIsStarting(){
+    @SuppressWarnings("WeakerAccess")
+    public boolean isStarting(){
         return isStarting;
     }
 
+    @SuppressWarnings({"WeakerAccess", "BooleanMethodIsAlwaysInverted"})
     public boolean isStopping(){
         return isStopping;
     }
@@ -53,15 +58,15 @@ public abstract class Worker {
 
                     do {
                         info._getTask().run(info.getState());
-                        if (info.isRepeatable && !isStopping)
-                            Thread.currentThread().join(Workers.getTaskSleepInterval());
+                        if (info.isRepeatable && !isStopping) Parallel.sleep();
 
                     } while (info.isRepeatable && !isStopping);
 
                     info._notifySuccess();
 
                 } catch (InterruptedException e) {
-                    if (Framework.debug) Log.warning(worker.getClass(),
+                    if (Framework.debug) //noinspection ConstantConditions
+                        Log.warning(worker.getClass(),
                             "Task is aborted",
                             "Instance: " + worker,
                             "Task: " + info._getTask().getClass().getPackage().getName() + "/" + info._getTask().getClass().getName());
@@ -69,6 +74,7 @@ public abstract class Worker {
                     info._notifyFailure(e);
                 }
                 catch (Exception e) {
+                    //noinspection ConstantConditions
                     Log.error(worker.getClass(),
                             "Error detected",
                             "Instance: " + this,
@@ -86,6 +92,7 @@ public abstract class Worker {
                                 shutdown();
                             }
                             catch (Exception e) {
+                                //noinspection ConstantConditions
                                 Log.error(worker.getClass(),
                                         "Error detected",
                                         "Instance: " + this,
@@ -107,6 +114,7 @@ public abstract class Worker {
         };
     }
 
+    @SuppressWarnings("WeakerAccess")
     protected TaskState registerTask(final Task task, final Object state, final boolean repeat) {
 
         if (task == null) throw new IllegalArgumentException("task");
@@ -120,23 +128,20 @@ public abstract class Worker {
                 try {
                     if (isRunning) {
 
-                        Thread T = new Thread(new Runnable() {
-                            @Override
-                            public void run() {
-                                try {
-                                    info._notifyStart(Thread.currentThread());
+                        Thread T = new Thread(() -> {
+                            try {
+                                info._notifyStart(Thread.currentThread());
 
-                                    do {
-                                        info._getTask().run(info.getState());
-                                        if (info.isRepeatable && !isStopping) Thread.currentThread().join(Workers.getTaskSleepInterval());
-                                    } while (info.isRepeatable && !isStopping);
+                                do {
+                                    info._getTask().run(info.getState());
+                                    if (info.isRepeatable && !isStopping) Parallel.sleep();
+                                } while (info.isRepeatable && !isStopping);
 
-                                    info._notifySuccess();
-                                }
-                                catch (InterruptedException e) {
+                                info._notifySuccess();
+                            }
+                            catch (InterruptedException e) {
 
-                                    info._notifyFailure(e);
-                                }
+                                info._notifyFailure(e);
                             }
                         });
 
@@ -252,9 +257,9 @@ public abstract class Worker {
                 while (System.currentTimeMillis() - anchor < Workers.getStopTimeout() && isRunning) {
 
                     try {
-                        Thread.currentThread().join(100);
+                        Parallel.sleep();
                     }
-                    catch (InterruptedException e) {
+                    catch (InterruptedException ignored) {
                     }
                 }
 
@@ -269,14 +274,14 @@ public abstract class Worker {
 
                         try {
                             info.getThread().interrupt();
-                        } catch (Exception e) {
+                        } catch (Exception ignored) {
                         }
                     }
 
                     for (TaskState info : tasks) {
                         try {
                             info.getThread().join();
-                        } catch (InterruptedException e) {
+                        } catch (InterruptedException ignored) {
                         }
                     }
 
@@ -305,12 +310,15 @@ public abstract class Worker {
         }
     }
 
+    @SuppressWarnings({"WeakerAccess", "EmptyMethod"})
     protected void initialise() {
     }
 
+    @SuppressWarnings({"WeakerAccess", "EmptyMethod"})
     protected void startup() {
     }
 
+    @SuppressWarnings({"WeakerAccess", "EmptyMethod"})
     protected void shutdown() {
     }
 }

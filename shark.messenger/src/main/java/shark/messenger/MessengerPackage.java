@@ -2,6 +2,7 @@ package shark.messenger;
 
 import java.util.Date;
 
+@SuppressWarnings("WeakerAccess")
 public class MessengerPackage implements MessengerTarget {
 
     public String PushKey;
