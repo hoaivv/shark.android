@@ -45,81 +45,78 @@ public class Operator {
         @Override
         protected void initialise() {
             isMainThreadRunning = true;
-            registerTask(_operator, null, true);
+            registerTask(state -> _operator(), null, true);
         }
 
-        private final Task _operator = new Task() {
-            @Override
-            public void run(Object state) {
+        private void  _operator() throws InterruptedException {
 
-                TaskInfo[] tasks;
+            TaskInfo[] tasks;
 
-                int threadCreationPoint = 0;
-                int threadTerminationPoint = 0;
+            int threadCreationPoint = 0;
+            int threadTerminationPoint = 0;
 
-                int lastCount = 0;
+            int lastCount = 0;
 
-                while (isRunning() && !isStopping()) {
+            while (isRunning() && !isStopping()) {
 
-                    synchronized (pendingQueue) {
-                        tasks = pendingQueue.toArray(new TaskInfo[0]);
-                        pendingQueue.clear();
-                    }
+                synchronized (pendingQueue) {
+                    tasks = pendingQueue.toArray(new TaskInfo[0]);
+                    pendingQueue.clear();
+                }
 
-                    long now = System.currentTimeMillis();
+                long now = System.currentTimeMillis();
 
-                    for (final TaskInfo info : tasks) {
-                        if (info.stamp > now) {
+                for (final TaskInfo info : tasks) {
+                    if (info.stamp > now) {
 
-                            synchronized (pendingQueue) {
-                                pendingQueue.add(info);
-                            }
-                        } else {
-
-                            synchronized (waitingQueue) {
-                                waitingQueue.add(info.state);
-                            }
-                        }
-                    }
-
-                    int count;
-                    synchronized (waitingQueue) {
-                        count = waitingQueue.size();
-                    }
-
-                    if (count >= lastCount && taskCount() - 1 < maxNumberOfThreads) {
-                        if (taskCount() == 1 || ++threadCreationPoint >= threadCreationThreshold) {
-                            registerTask(_processor, null, true);
-                            threadCreationPoint = 0;
+                        synchronized (pendingQueue) {
+                            pendingQueue.add(info);
                         }
                     } else {
+
+                        synchronized (waitingQueue) {
+                            waitingQueue.add(info.state);
+                        }
+                    }
+                }
+
+                int count;
+                synchronized (waitingQueue) {
+                    count = waitingQueue.size();
+                }
+
+                if (count >= lastCount && taskCount() - 1 < maxNumberOfThreads) {
+                    if (taskCount() == 1 || ++threadCreationPoint >= threadCreationThreshold) {
+                        registerTask(state -> _processor(), null, true);
                         threadCreationPoint = 0;
                     }
+                } else {
+                    threadCreationPoint = 0;
+                }
 
-                    lastCount = count;
+                lastCount = count;
 
-                    if (count + tasks.length == 0 && taskCount() == 1) {
-                        if (++threadTerminationPoint >= threadTerminationThreshold) {
+                if (count + tasks.length == 0 && taskCount() == 1) {
+                    if (++threadTerminationPoint >= threadTerminationThreshold) {
 
-                            synchronized (pendingQueue) {
-                                synchronized (waitingQueue) {
-                                    if (pendingQueue.size() + waitingQueue.size() == 0) {
-                                        isMainThreadRunning = false;
-                                        break;
-                                    }
+                        synchronized (pendingQueue) {
+                            synchronized (waitingQueue) {
+                                if (pendingQueue.size() + waitingQueue.size() == 0) {
+                                    isMainThreadRunning = false;
+                                    break;
                                 }
                             }
                         }
-                    } else {
-                        threadTerminationPoint = 0;
                     }
-
-                    try { Parallel.sleep(); } catch (InterruptedException ignored) { }
+                } else {
+                    threadTerminationPoint = 0;
                 }
-            }
-        };
 
-        private final Task _processor = state -> {
+                Parallel.sleep();
+            }
+        }
+
+        private void _processor() {
 
             int threadTerminationPoint = 0;
 
@@ -147,7 +144,7 @@ public class Operator {
                     _runTask(info);
                 }
             }
-        };
+        }
 
         private void _runTask(TaskState info) {
 

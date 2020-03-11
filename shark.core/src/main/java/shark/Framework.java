@@ -135,7 +135,7 @@ public final class Framework {
     }
 
     /**
-     * Initilises Shark Framework. This method must be called prior to any Shark Component
+     * Initialises Shark Framework. This method must be called prior to any Shark Component
      * initialization, otherwise application could be blocked
      * @param context context of the application, provided by Android OS
      * @return true via {@link Promise} if the operation is succeed; otherwise false via
