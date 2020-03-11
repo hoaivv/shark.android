@@ -25,7 +25,7 @@ import shark.utils.Log;
 import shark.utils.LogData;
 
 /**
- * Controller of Shark Framework
+ * Controller of Shark Framework.
  */
 public final class Framework {
 
@@ -121,6 +121,13 @@ public final class Framework {
         return new File(dataDirectory);
     }
 
+    /**
+     * Initilises Shark Framework. This method must be called prior to any Shark Component
+     * initialization, otherwise application could be blocked
+     * @param context context of the application, provided by Android OS
+     * @return true via {@link Promise} if the operation is succeed; otherwise false via
+     * {@link Promise}
+     */
     public static Promise<Boolean> initialise(Context context) {
 
         Promise<Boolean> promise = new Promise<>();
