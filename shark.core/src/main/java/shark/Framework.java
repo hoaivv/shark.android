@@ -113,24 +113,23 @@ public final class Framework {
      * method will block the calling thread until the data directory information is available to
      * the framework.
      * @return Information of the application data directory
-     * @throws InterruptedException throws if the thread on which this method is being invoked is
-     * interrupted
+     *
+     * @exception RuntimeException throws if Shark is not initialised
      */
-    public static File getDataDirectory() throws InterruptedException {
+    public static File getDataDirectory() {
 
-        while (contextGetter == null) Parallel.sleep();
-        return File.convert(contextGetter.run().getFilesDir());
+        return File.convert(getContext().getFilesDir());
     }
 
     /**
      * Gets application context, provided by Android OS when Shark Framework is initialised
      * @return context provided by Android OS
-     * @throws InterruptedException throws if the calling thread is interrupted before context
-     * information is acquired by Shark Framework
+     *
+     * @exception RuntimeException throws if Shark is not initialised
      */
     @SuppressWarnings("unused")
-    public static Context getContext() throws InterruptedException {
-        while (contextGetter == null) Parallel.sleep();
+    public static Context getContext() {
+        if (contextGetter == null) throw new RuntimeException("Shark is not initialised");
         return contextGetter.run();
     }
 

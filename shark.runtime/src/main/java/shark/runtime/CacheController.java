@@ -126,10 +126,10 @@ public final class CacheController {
      * Gets directory where all caching data to be stored. This method blocks calling thread until
      * {@link Framework} is started
      * @return directory where all caching data to be stored
-     * @throws InterruptedException throws if the calling thread is interrupted before
-     * {@link Framework} is started
+     *
+     * @exception RuntimeException throws if Shark is not initialised
      */
-    public static File getCacheDirectory() throws InterruptedException {
+    public static File getCacheDirectory() {
         return new File(Framework.getDataDirectory() + "/cache");
     }
 
@@ -137,10 +137,10 @@ public final class CacheController {
      * Indicates whether the allocated caches are persistent or not. This method blocks calling
      * thread until {@link Framework} is started
      * @return directory where all caching data to be stored
-     * @throws InterruptedException throws if the calling thread is interrupted before
-     * {@link Framework} is started
+     *
+     * @exception RuntimeException throws if Shark is not initialised
      */
-    public static boolean isPersistent() throws InterruptedException {
+    public static boolean isPersistent() {
 
         return !(new File(getCacheDirectory() + "/.delay")).exists();
     }

@@ -61,18 +61,10 @@ public class Cache<TIndex, TData> {
             return;
         }
 
-        File dir;
+        File dir = getCacheDirectory();
 
-        try {
-            dir = getCacheDirectory();
-
-            if (!dir.exists() && !dir.mkdirs()) {
+        if (!dir.exists() && !dir.mkdirs()) {
                 Log.error(this.getClass(), "Could not create cache directory");
-            }
-        } catch (InterruptedException e) {
-
-            Log.error(this.getClass(), "Could not create cache directory");
-            return;
         }
 
         mode = CacheController.getMode();
@@ -350,10 +342,10 @@ public class Cache<TIndex, TData> {
      * Gets the directory where the caching data of the cache is stored. This method blocks the
      * calling thread until {@link shark.Framework} is started.
      * @return Directory where the caching data of the cache is stored
-     * @throws InterruptedException throws if the calling thread is interrupted before
-     * {@link shark.Framework} is started
+     *
+     * @exception RuntimeException throws if Shark is not initialised
      */
-    public File getCacheDirectory() throws InterruptedException {
+    public File getCacheDirectory() {
         return new File(CacheController.getCacheDirectory() + "/" + identifier);
     }
 

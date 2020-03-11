@@ -78,11 +78,11 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
      * Gets the file which stored the entry information. This method blocks calling thread until
      * {@link shark.Framework} is started
      * @return file which stored the entry information
-     * @throws InterruptedException throws if the calling thread is interrupted before
-     * {@link shark.Framework} is started
+     *
+     * @exception RuntimeException throws if Shark is not initialised
      */
     @SuppressWarnings("WeakerAccess")
-    public File getFile() throws InterruptedException {
+    public File getFile() {
         return new File(cache.getCacheDirectory() + "/" + fileIndex + ".data");
     }
 
@@ -154,10 +154,10 @@ public class CacheEntry<TIndex,TData> implements ITypeScopeDistinguishable {
      * Indicates whether the entry is deleted/not initialised or not. This method block the calling
      * thread until {@link shark.Framework} is started
      * @return true if the entry is deleted/not initialised; otherwise false
-     * @throws InterruptedException throws if the calling thread is interrupted before
-     * {@link shark.Framework} is started
+     *
+     * @exception RuntimeException throws if Shark is not initialised
      */
-    public boolean isDeletedOrNotInitialized() throws InterruptedException {
+    public boolean isDeletedOrNotInitialized() {
 
         synchronized (this) {
             File file = getFile();

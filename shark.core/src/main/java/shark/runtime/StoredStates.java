@@ -19,16 +19,7 @@ public class StoredStates {
 
     private StoredStates() {
 
-        File location;
-
-        try {
-            location = getLocation();
-        }
-        catch (InterruptedException e) {
-
-            isLoaded = false;
-            return;
-        }
+        File location = getLocation();
 
         if (location.exists() && location.isFile()) {
 
@@ -73,7 +64,12 @@ public class StoredStates {
         return isLoaded;
     }
 
-    public static File getLocation() throws InterruptedException {
+    /**
+     * Gets location of the file, which stored states data
+     * @return location of states file
+     * @exception RuntimeException throws if Shark is not initialised
+     */
+    public static File getLocation() {
 
         return new File( Framework.getDataDirectory() + "/states");
     }
