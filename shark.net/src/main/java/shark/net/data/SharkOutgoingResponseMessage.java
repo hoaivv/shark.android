@@ -6,21 +6,23 @@ import shark.net.RequestResult;
 
 public final class SharkOutgoingResponseMessage extends OutgoingResponseMessage {
 
-    private RequestResult result;
+    private final RequestResult result;
 
+    @SuppressWarnings("unused")
     public RequestResult getResult() {
         return result;
     }
 
-    private boolean dataConvereted;
+    private final boolean dataConverted;
 
-    public boolean isDataConvereted() {
-        return dataConvereted;
+    @SuppressWarnings("unused")
+    public boolean isDataConverted() {
+        return dataConverted;
     }
 
     public SharkOutgoingResponseMessage(long transactionId, RequestResult result, OutputStream data, boolean isDataConverted, Object state){
         super(transactionId, Message.SharkMessage, data, state);
         this.result = result;
-        this.dataConvereted = isDataConverted;
+        this.dataConverted = isDataConverted;
     }
 }

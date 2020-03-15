@@ -10,19 +10,19 @@ public abstract class Message {
     public static final int Request = 16;
     public static final int Response = 32;
 
-    private long transactionId;
+    private final long transactionId;
 
     public long getTransactionId() {
         return transactionId;
     }
 
-    private int type;
+    private final int type;
 
     public int getType() {
         return type;
     }
 
-    private Object state;
+    private final Object state;
 
     public Object getState() {
         return state;

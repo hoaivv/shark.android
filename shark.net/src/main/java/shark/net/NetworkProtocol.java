@@ -20,18 +20,22 @@ import shark.runtime.serialization.Serializer;
 
 public abstract class NetworkProtocol {
 
+    @SuppressWarnings("WeakerAccess")
     public Serializer getSerializer() {
         return Serializer.getDefault();
     }
 
+    @SuppressWarnings("SameReturnValue")
     public boolean isClosable(Connection connection) {
         return true;
     }
 
+    @SuppressWarnings("WeakerAccess")
     protected InputStream getInput(Socket socket, ConnectionMode mode) throws IOException {
         return socket.getInputStream();
     }
 
+    @SuppressWarnings("WeakerAccess")
     protected OutputStream getOutput(Socket socket, ConnectionMode mode) throws IOException {
         return socket.getOutputStream();
     }
@@ -44,10 +48,11 @@ public abstract class NetworkProtocol {
         return getOutput(socket, mode);
     }
 
-    InetSocketAddress _localServer = null;
+    @SuppressWarnings("CanBeFinal")
+    private InetSocketAddress localServer = null;
 
     public final InetSocketAddress getLocalServer() {
-        return _localServer;
+        return localServer;
     }
 
     public abstract boolean isRequestor(Connection connection);
@@ -72,28 +77,35 @@ public abstract class NetworkProtocol {
         return (isRequestor(connection) && connection.getNumberOfWaitingResponses() > 0) || (isResponder(connection) && connection.getNumberOfWaitingRequests() > 0);
     }
 
+    @SuppressWarnings("EmptyMethod")
     public void processProtocolRequest(Connection connection, ProtocolIncomingRequestMessage message) {
     }
 
+    @SuppressWarnings("EmptyMethod")
     public void processProtocolResponse(Connection connection, ProtocolIncomingResponseMessage message) {
     }
 
+    @SuppressWarnings("SameReturnValue")
     public ProtocolOutgoingRequestMessage generatePingMessage() {
         return null;
     }
 
+    @SuppressWarnings("SameReturnValue")
     public boolean isPingMessage(ProtocolIncomingRequestMessage message) {
         return false;
     }
 
+    @SuppressWarnings("SameReturnValue")
     public ProtocolOutgoingResponseMessage answerPingMessage(ProtocolIncomingRequestMessage message) {
         return null;
     }
 
+    @SuppressWarnings("SameReturnValue")
     public ProtocolOutgoingRequestMessage generateCloseMessage() {
         return null;
     }
 
+    @SuppressWarnings("SameReturnValue")
     public boolean isCloseMessage(ProtocolIncomingRequestMessage message)
     {
         return false;
@@ -127,16 +139,20 @@ public abstract class NetworkProtocol {
         }
     }
 
+    @SuppressWarnings("EmptyMethod")
     public void initialise(Connection connection) {
     }
 
+    @SuppressWarnings("EmptyMethod")
     public void release(Connection connection) {
     }
 
+    @SuppressWarnings("EmptyMethod")
     public void finishProceedMessage(Message message, Connection connection)
     {
     }
 
+    @SuppressWarnings("SameReturnValue")
     public Object generateResponseState(SharkIncomingRequestMessage message) {
         return null;
     }

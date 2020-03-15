@@ -4,7 +4,7 @@ import java.io.InputStream;
 
 public abstract class IncomingMessage extends Message {
 
-    private InputStream data;
+    private final InputStream data;
 
     public InputStream getData() {
         return data;

@@ -1,12 +1,13 @@
 package shark.net;
 
+import android.annotation.SuppressLint;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.ProtocolException;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketException;
@@ -15,10 +16,11 @@ import java.util.HashMap;
 import java.util.LinkedList;
 
 import shark.Framework;
-import shark.components.IServiceRequestInfo;
 import shark.components.InvalidServiceDataException;
 import shark.components.NotProceedServiceException;
 import shark.delegates.Action1;
+import shark.io.IncomingStream;
+import shark.io.OutgoingStream;
 import shark.net.data.ConnectionCloseReason;
 import shark.net.data.ConnectionClosedEventArgs;
 import shark.net.data.ConnectionErrorDetectedEventArgs;
@@ -38,7 +40,6 @@ import shark.net.data.SharkOutgoingResponseMessage;
 import shark.runtime.Parallel;
 import shark.runtime.Service;
 import shark.runtime.ServiceExecutionResult;
-import shark.runtime.ServiceExecutionState;
 import shark.runtime.Services;
 import shark.runtime.events.ActionEvent;
 import shark.utils.Log;
@@ -46,60 +47,75 @@ import shark.utils.Log;
 @SuppressWarnings("SpellCheckingInspection")
 public class Connection implements Closeable {
 
-    public static class Operations {
-        public static final int None = 0;
-        public static final int Reading = 1;
-        public static final int Writing = 2;
-        public static final int Processing = 4;
-        public static final int Checking = 8;
+    private static <T> INetworkServiceRequestInfo generateRequestInfo(Class<T> dataType, Connection connection, Object requestState, Object responseState, Object data) {
+        //noinspection unchecked
+        return new NetworkServiceRequestInfo<>(connection, requestState, responseState, (T)data);
     }
 
+    static class Operations {
+        static final int None = 0;
+        static final int Reading = 1;
+        static final int Writing = 2;
+        static final int Processing = 4;
+        static final int Checking = 8;
+    }
+
+    @SuppressWarnings("WeakerAccess")
     public static final ActionEvent<ConnectionEventArgs> onInstanceConstructed = new ActionEvent<>();
     private static final Action1<ConnectionEventArgs> onInstanceConstructedInvoker = ActionEvent.getInvoker(onInstanceConstructed);
 
+    @SuppressWarnings("WeakerAccess")
     public static final ActionEvent<ConnectionEventArgs> onInstanceOpened = new ActionEvent<>();
     private static final Action1<ConnectionEventArgs> onInstanceOpenedInvoker = ActionEvent.getInvoker(onInstanceOpened);
 
+    @SuppressWarnings("WeakerAccess")
     public static final ActionEvent<ConnectionClosedEventArgs> onInstanceClosed = new ActionEvent<>();
     private static final Action1<ConnectionClosedEventArgs> onInstanceClosedInvoker = ActionEvent.getInvoker(onInstanceClosed);
 
+    @SuppressWarnings("WeakerAccess")
     public static final ActionEvent<ConnectionClosedEventArgs> onInstanceDestroyed = new ActionEvent<>();
     private static final Action1<ConnectionClosedEventArgs> onInstanceDestroyedInvoker = ActionEvent.getInvoker(onInstanceDestroyed);
 
+    @SuppressWarnings("WeakerAccess")
     public final ActionEvent<ConnectionEventArgs> onOpened = new ActionEvent<>();
     private final Action1<ConnectionEventArgs> onOpenedInvoker = ActionEvent.getInvoker(onOpened);
 
+    @SuppressWarnings("WeakerAccess")
     public final ActionEvent<ConnectionClosedEventArgs> onClosed = new ActionEvent<>();
     private final Action1<ConnectionClosedEventArgs> onClosedInvoker = ActionEvent.getInvoker(onClosed);
 
+    @SuppressWarnings("WeakerAccess")
     public final ActionEvent<ConnectionClosedEventArgs> onDestroyed = new ActionEvent<>();
     private final Action1<ConnectionClosedEventArgs> onDestroyedInvoker = ActionEvent.getInvoker(onDestroyed);
 
+    @SuppressWarnings("WeakerAccess")
     public final ActionEvent<ConnectionErrorDetectedEventArgs> onErrorDetected = new ActionEvent<>();
     private final Action1<ConnectionErrorDetectedEventArgs> onErrorDetectedInvoker = ActionEvent.getInvoker(onErrorDetected);
 
+    @SuppressWarnings("WeakerAccess")
     public final ActionEvent<ConnectionStateChangedEventArgs> onStateChanged = new ActionEvent<>();
     private final Action1<ConnectionStateChangedEventArgs> onStateChangedInvoker = ActionEvent.getInvoker(onStateChanged);
 
     private Socket socket;
 
-    private LinkedList<OutgoingMessage> outgoingMsgQueue = new LinkedList<>();
-    private LinkedList<IncomingMessage> incomingMsgQueue = new LinkedList<>();
-    private LinkedList<Action1<OutputStream>> outgoingActionQueue = new LinkedList<>();
-    private LinkedList<Action1<InputStream>> incomingActionQueue = new LinkedList<>();
+    private final LinkedList<OutgoingMessage> outgoingMsgQueue = new LinkedList<>();
+    private final LinkedList<IncomingMessage> incomingMsgQueue = new LinkedList<>();
+    private final LinkedList<Action1<OutputStream>> outgoingActionQueue = new LinkedList<>();
+    private final LinkedList<Action1<InputStream>> incomingActionQueue = new LinkedList<>();
 
-    private HashMap<Long, ServiceRequestState> executingRequestStates = new HashMap<>();
+    @SuppressLint("UseSparseArrays")
+    private final HashMap<Long, ServiceRequestState> executingRequestStates = new HashMap<>();
     private ConnectionState state = ConnectionState.Closed;
     private long nextTransactionID = 1;
     private Long isRequestingToCloseAtTimeUtc = null;
     private ConnectionCloseReason closeReason = ConnectionCloseReason.Unknown;
     private boolean notifyOnClosing = true;
-    private Object opLock = new Object();
+    private final Object opLock = new Object();
 
-    private InputStream incomingStream;
-    private OutputStream outgoingStream;
+    private IncomingStream incomingStream;
+    private OutgoingStream outgoingStream;
 
-    private LinkedList<Message> queuedDuringHandShaking = new LinkedList<>();
+    private final LinkedList<Message> queuedDuringHandShaking = new LinkedList<>();
 
     private NetworkProtocol protocol;
 
@@ -176,19 +192,25 @@ public class Connection implements Closeable {
         if (value != state) {
             ConnectionStateChangedEventArgs args = new ConnectionStateChangedEventArgs(this, state, value);
             state = value;
+            //noinspection ConstantConditions
             onStateChangedInvoker.run(args);
         }
     }
 
-    private long lastIncomingUtc = System.currentTimeMillis();
-    private long lastOutgoingUtc = System.currentTimeMillis();
-
+    @SuppressWarnings("WeakerAccess")
     public long getLastIncomingUtc() {
-        return lastIncomingUtc;
+
+        IncomingStream stream = incomingStream;
+
+        return stream == null ? 0 : stream.getLastActive();
     }
 
+    @SuppressWarnings("WeakerAccess")
     public long getLastOutgoingUtc() {
-        return lastOutgoingUtc;
+
+        OutgoingStream stream = outgoingStream;
+
+        return stream == null ? 0 : stream.getLastActive();
     }
 
     private ConnectionMode mode = ConnectionMode.Unknown;
@@ -208,22 +230,26 @@ public class Connection implements Closeable {
         return remoteServer;
     }
 
+    @SuppressWarnings({"WeakerAccess", "CanBeFinal"})
     public int idleTimeout = 30000;
 
     public long getIdleTime() {
         return System.currentTimeMillis() - getLastActiveUtc();
     }
 
+    @SuppressWarnings("WeakerAccess")
     public long getLastActiveUtc() {
-        return Math.max(lastIncomingUtc, lastOutgoingUtc);
+        return Math.max(getLastIncomingUtc(), getLastOutgoingUtc());
     }
 
+    @SuppressWarnings("WeakerAccess")
     public long getIncomingIdleTime() {
-        return System.currentTimeMillis() - lastIncomingUtc;
+        return System.currentTimeMillis() - getLastIncomingUtc();
     }
 
+    @SuppressWarnings("WeakerAccess")
     public long getOutgoingIdleTime() {
-        return System.currentTimeMillis() - lastOutgoingUtc;
+        return System.currentTimeMillis() - getLastOutgoingUtc();
     }
 
     public boolean isTimeout() {
@@ -239,15 +265,17 @@ public class Connection implements Closeable {
         ConnectionClosedEventArgs args = new ConnectionClosedEventArgs(this, this.remoteServer, ConnectionCloseReason.Destroying);
 
         try {
+            //noinspection ConstantConditions
             onDestroyedInvoker.run(args);
         }
-        catch (Exception e) {
+        catch (Exception ignored) {
         }
 
         try {
+            //noinspection ConstantConditions
             onInstanceDestroyedInvoker.run(args);
         }
-        catch (Exception e) {
+        catch (Exception ignored) {
         }
 
         if (Framework.debug) Log.information(Connection.class, "A connection is destroyed", "Connection: " + this);
@@ -261,13 +289,14 @@ public class Connection implements Closeable {
         try { Parallel.queue(() -> onInstanceConstructedInvoker.run(new ConnectionEventArgs(this))); } catch (InterruptedException ignored) {}
     }
 
+    @SuppressWarnings("NullableProblems")
     @Override
     public String toString() {
         NetworkProtocol handler = protocol;
         return "#" + hashCode() + (handler == null ? "" : " [" + mode + "|" + state + "|" + (remoteEndPoint == null ? "n/a" : remoteEndPoint) + "]");
     }
 
-    boolean _handle(Socket socket) {
+    boolean _handle(Socket socket) throws InterruptedException {
 
         if (socket == null) throw new IllegalArgumentException();
 
@@ -285,13 +314,13 @@ public class Connection implements Closeable {
             }
             finally {
                 if (ok) ok = endOpen(socket, null, ConnectionMode.Passive);
-
             }
 
             return ok;
         }
     }
 
+    @SuppressWarnings("WeakerAccess")
     public <T> ServiceRequestState requestAsync(Class<T> expecting, String service, Object data, ServiceRequestCallback<T> callback, Object state, T onFailure) throws InterruptedException {
 
         if (expecting == null) throw new IllegalArgumentException("expecting");
@@ -327,6 +356,7 @@ public class Connection implements Closeable {
         SharkOutgoingRequestMessage message = new SharkOutgoingRequestMessage(transactionId, service, stream, converted, null);
 
         try {
+            //noinspection LoopConditionNotUpdatedInsideLoop
             while (state == ConnectionState.Closing) Parallel.sleep();
         }
         catch (InterruptedException e) {
@@ -371,6 +401,7 @@ public class Connection implements Closeable {
         return requestAsync(expecting, service, data, null, null, null);
     }
 
+    @SuppressWarnings("WeakerAccess")
     public <T> ServiceRequestState request(Class<T> expecting, String service, Object data) throws InterruptedException {
 
         ServiceRequestState state = requestAsync(expecting, service, data, null, null, null);
@@ -378,7 +409,7 @@ public class Connection implements Closeable {
         try {
             while (!state.isCompleted()) Parallel.sleep();
         }
-        catch (InterruptedException e) {
+        catch (InterruptedException ignored) {
         }
 
         return state;
@@ -388,6 +419,7 @@ public class Connection implements Closeable {
         ServiceRequestState state = request(expecting, service, data);
 
         try {
+            //noinspection unchecked
             return state.getResult() == RequestResult.OK ? (T) state.getResponse() : onFailure;
         }
         catch (Exception e) {
@@ -395,11 +427,13 @@ public class Connection implements Closeable {
         }
     }
 
+    @SuppressWarnings({"WeakerAccess", "UnusedReturnValue"})
     public boolean open(SocketAddress serverEndPoint) throws InterruptedException {
 
         if (serverEndPoint == null) throw new IllegalArgumentException();
 
         synchronized (opLock) {
+            //noinspection StringEquality
             if (state == ConnectionState.Active && remoteServer != null && remoteServer.toString() == serverEndPoint.toString()) return true;
             if (state != ConnectionState.Closed || state == ConnectionState.Starting) return false;
 
@@ -486,8 +520,8 @@ public class Connection implements Closeable {
 
             try
             {
-                incomingStream = protocol.getInput(socket, mode);
-                outgoingStream = protocol.getOutput(socket, mode);
+                incomingStream = new IncomingStream(protocol.getInput(socket, mode));
+                outgoingStream = new OutgoingStream(protocol.getOutput(socket, mode));
             }
             catch (Exception ignored1)
             {
@@ -520,6 +554,7 @@ public class Connection implements Closeable {
         close(0);
     }
 
+    @SuppressWarnings("WeakerAccess")
     public void close(long timeout) {
 
         if (timeout < 0) throw new IllegalArgumentException();
@@ -536,7 +571,8 @@ public class Connection implements Closeable {
         }
     }
 
-    public boolean queue(Message message) {
+    @SuppressWarnings({"WeakerAccess", "UnusedReturnValue"})
+    public boolean queue(Message message) throws InterruptedException {
         synchronized (opLock)
         {
             if (message == null) throw new IllegalArgumentException();
@@ -579,10 +615,9 @@ public class Connection implements Closeable {
 
                         incomingMsgQueue.add((IncomingMessage)message);
 
-                        if (protocol.isProcessingOperationNeeded(this) && (activeOperations & Operations.Processing) == Operations.None)
-                        {
+                        if (protocol.isProcessingOperationNeeded(this) && (activeOperations & Operations.Processing) == Operations.None) {
                             activeOperations |= Operations.Processing;
-                            NetworkOperator.enqueueProcessor(beginProcess);
+                            NetworkOperator._enqueueProcessor(this::beginProcess);
                         }
                     }
 
@@ -615,8 +650,7 @@ public class Connection implements Closeable {
                         if (protocol.isWritingOperationNeeded(this) && (activeOperations & Operations.Writing) == Operations.None)
                         {
                             activeOperations |= Operations.Writing;
-
-                            NetworkOperator.enqueueIO(write);
+                            NetworkOperator._enqueueIO(this::write);
                         }
                     }
 
@@ -641,15 +675,7 @@ public class Connection implements Closeable {
         }
     }
 
-    private void resetLastIncoming() {
-        lastIncomingUtc = System.currentTimeMillis();
-    }
-
-    private void resetLastOutgoing() {
-        lastOutgoingUtc = System.currentTimeMillis();
-    }
-
-    private boolean endOpen(Socket socket, SocketAddress server, ConnectionMode mode) {
+    private boolean endOpen(Socket socket, SocketAddress server, ConnectionMode mode) throws InterruptedException {
         synchronized (opLock)
         {
             boolean pass = false;
@@ -660,7 +686,6 @@ public class Connection implements Closeable {
 
                 remoteServer = server;
                 remoteEndPoint = socket.getRemoteSocketAddress();
-                mode = mode;
                 isRequestingToCloseAtTimeUtc = null;
 
                 try
@@ -669,17 +694,15 @@ public class Connection implements Closeable {
                 }
                 catch (Exception e)
                 {
-                    if (!(e instanceof InterruptedException))
-                    {
-                        if (Framework.log) Log.error(Connection.class,
-                                "Error detected",
-                                "Operation: Initializing",
-                                "Error: " + e.getMessage(),
-                                Log.stringify(e.getStackTrace())
-                        );
+                    if (Framework.log) Log.error(Connection.class,
+                            "Error detected",
+                            "Operation: Initializing",
+                            "Error: " + e.getMessage(),
+                            Log.stringify(e.getStackTrace())
+                    );
 
-                        Parallel.queue(() -> onErrorDetectedInvoker.run( new ConnectionErrorDetectedEventArgs(this, e)));
-                    }
+                    //noinspection ConstantConditions
+                    Parallel.queue(() -> onErrorDetectedInvoker.run( new ConnectionErrorDetectedEventArgs(this, e)));
 
                     return false;
                 }
@@ -690,23 +713,20 @@ public class Connection implements Closeable {
                     socket.setSoTimeout(idleTimeout);
 
                     this.socket = socket;
-                    incomingStream = protocol.getInput(socket, mode);
-                    outgoingStream = protocol.getOutput(socket, mode);
+                    incomingStream = new IncomingStream(protocol.getInput(socket, mode));
+                    outgoingStream = new OutgoingStream(protocol.getOutput(socket, mode));
                 }
                 catch (Exception e)
                 {
-                    if (!(e instanceof InterruptedException))
-                    {
-                        if (Framework.debug && Framework.log) Log.warning(Connection.class,
-                                "Connection is interrupted",
-                                "Operation: Setting up"
-                        );
-                    }
+                    if (Framework.debug && Framework.log) Log.warning(Connection.class,
+                            "Connection is interrupted",
+                            "Operation: Setting up"
+                    );
 
                     return false;
                 }
 
-                boolean HSPass = false;
+                boolean HSPass;
 
                 try {
 
@@ -715,18 +735,16 @@ public class Connection implements Closeable {
                 }
                 catch (Exception e)
                 {
-                    if (!(e instanceof InterruptedException) && !(e instanceof SocketException) && !(e instanceof IOException) && !(e instanceof SocketTimeoutException))
-                    {
-                        if (Framework.log) Log.error(Connection.class,
-                                "Error detected",
-                                "Operation: Handshaking",
-                                "State: " + state,
-                                "Error: " + e.getMessage(),
-                                Log.stringify(e.getStackTrace())
-                        );
+                    if (Framework.log) Log.error(Connection.class,
+                            "Error detected",
+                            "Operation: Handshaking",
+                            "State: " + state,
+                            "Error: " + e.getMessage(),
+                            Log.stringify(e.getStackTrace())
+                    );
 
-                        Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e)));
-                    }
+                    //noinspection ConstantConditions
+                    Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e)));
 
                     return false;
                 }
@@ -762,25 +780,26 @@ public class Connection implements Closeable {
 
                     while (queuedDuringHandShaking.size() > 0) queue(queuedDuringHandShaking.poll());
 
-                    lastIncomingUtc = lastOutgoingUtc = System.currentTimeMillis();
-
                     activeOperations = Operations.Checking;
-                    NetworkOperator.enqueueChecker(check, System.currentTimeMillis() + 1000);
+                    NetworkOperator._enqueueChecker(this::check, System.currentTimeMillis() + 1000);
 
                     if (protocol.isReadingOperationNeeded(this))
                     {
                         activeOperations |= Operations.Reading;
-                        NetworkOperator.enqueueIO(read);
+                        NetworkOperator._enqueueIO(this::read);
                     }
 
-                    try { onOpenedInvoker.run(args); } catch (Exception ignored) {}
-                    try { Parallel.queue(() -> onInstanceOpenedInvoker.run(args)); } catch (Exception ignored) {}
+                    try { //noinspection ConstantConditions
+                        onOpenedInvoker.run(args); } catch (Exception ignored) {}
+                    try { //noinspection ConstantConditions
+                        Parallel.queue(() -> onInstanceOpenedInvoker.run(args)); } catch (Exception ignored) {}
                 }
                 else
                 {
                     setState(ConnectionState.Closed);
 
                     remoteEndPoint = null;
+                    //noinspection UnusedAssignment
                     mode = ConnectionMode.Unknown;
 
                     if (incomingStream != null) try { incomingStream.close(); } catch (IOException ignored) {}
@@ -789,6 +808,7 @@ public class Connection implements Closeable {
 
                     incomingStream = null;
                     outgoingStream = null;
+                    //noinspection UnusedAssignment
                     socket = null;
                 }
             }
@@ -826,7 +846,8 @@ public class Connection implements Closeable {
                 }
                 catch (Exception e)
                 {
-                    try { Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e))); } catch (InterruptedException ignored) {}
+                    try { //noinspection ConstantConditions
+                        Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e))); } catch (InterruptedException ignored) {}
                 }
             }
 
@@ -837,7 +858,8 @@ public class Connection implements Closeable {
             incomingMsgQueue.clear();
             outgoingMsgQueue.clear();
 
-            for (long key : executingRequestStates.keySet()) executingRequestStates.get(key)._notifyFailure(RequestResult.Aborted, null);
+            for (long key : executingRequestStates.keySet()) //noinspection ConstantConditions
+                executingRequestStates.get(key)._notifyFailure(RequestResult.Aborted, null);
 
             executingRequestStates.clear();
             nextTransactionID = 1;
@@ -851,17 +873,15 @@ public class Connection implements Closeable {
             }
             catch (Exception e)
             {
-                if (!(e instanceof InterruptedException))
-                {
-                    if (Framework.log) Log.error(Connection.class,
-                            "Error detected",
-                            "Operation: Releasing",
-                            e.getMessage(),
-                            Log.stringify(e.getStackTrace())
-                    );
+                if (Framework.log) Log.error(Connection.class,
+                        "Error detected",
+                        "Operation: Releasing",
+                        e.getMessage(),
+                        Log.stringify(e.getStackTrace())
+                );
 
-                    try { Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e))); } catch (InterruptedException ignored) {}
-                }
+                try { //noinspection ConstantConditions
+                    Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e))); } catch (InterruptedException ignored) {}
             }
 
             ConnectionClosedEventArgs args = new ConnectionClosedEventArgs(this, remoteServer, closeReason);
@@ -881,12 +901,14 @@ public class Connection implements Closeable {
 
             if (Framework.debug && Framework.log) Log.information(Connection.class, "Connection is closed");
 
-            try { onClosedInvoker.run(args); } catch (Exception ignored) { }
-            try { Parallel.queue(() -> onInstanceClosedInvoker.run(args)); } catch (Exception ignored) {}
+            try { //noinspection ConstantConditions
+                onClosedInvoker.run(args); } catch (Exception ignored) { }
+            try { //noinspection ConstantConditions
+                Parallel.queue(() -> onInstanceClosedInvoker.run(args)); } catch (Exception ignored) {}
         }
     }
 
-    private void ping() {
+    private void ping() throws InterruptedException {
         if (state != ConnectionState.Active || !protocol.isRequestor(this)) return;
 
         ProtocolOutgoingRequestMessage message = null;
@@ -897,11 +919,9 @@ public class Connection implements Closeable {
         }
         catch (Exception e)
         {
-            if (!(e instanceof InterruptedException))
-            {
-                try { Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e))); } catch (InterruptedException ignored) {}
-                beginClose(ConnectionCloseReason.PingingFailed);
-            }
+            try { //noinspection ConstantConditions
+                Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e))); } catch (InterruptedException ignored) {}
+            beginClose(ConnectionCloseReason.PingingFailed);
         }
         finally
         {
@@ -1001,14 +1021,8 @@ public class Connection implements Closeable {
                                 }
                                 catch (Exception e)
                                 {
-                                    if (e instanceof InterruptedException) {
-                                        queue(new SharkOutgoingResponseMessage(request.getTransactionId(), RequestResult.NotProceed, null, false, protocol.generateResponseState(request)));
-                                        protocol.finishProceedMessage(incomingMessage, this);
-                                    }
-                                    else {
-                                        queue(new SharkOutgoingResponseMessage(request.getTransactionId(), RequestResult.MalformedRequestData, null, false, protocol.generateResponseState(request)));
-                                        protocol.finishProceedMessage(incomingMessage, this);
-                                    }
+                                    queue(new SharkOutgoingResponseMessage(request.getTransactionId(), RequestResult.MalformedRequestData, null, false, protocol.generateResponseState(request)));
+                                    protocol.finishProceedMessage(incomingMessage, this);
 
                                     break;
                                 }
@@ -1018,21 +1032,10 @@ public class Connection implements Closeable {
                                 requestData = request.getData();
                             }
 
-                            Func<Connection, object, object, object, INetworkServiceRequestInfo> argsConstructor;
-
-                            synchronized (mappedTypes)
-                            {
-                                if (!_MappedTypes.ContainsKey(service.getDataClass())) _MappedTypes[service.DataType] = (Func<Connection, object, object, object, INetworkServiceRequestInfo>)typeof(NetworkServiceRequestInfo<>).MakeGenericType(new Type[] { service.DataType }).GetMethod("GenerateActivator", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, new object[0]);
-                                argsConstructor = _MappedTypes[service.DataType];
-                            }
-
-                            INetworkServiceRequestInfo args = argsConstructor(this, request.getState(), protocol.generateResponseState(request), requestData);
-
+                            INetworkServiceRequestInfo serviceRequest = generateRequestInfo(service.getDataClass(), this, request.getState(), protocol.generateResponseState(request), requestData);
                             SharkOutgoingResponseMessage response = null;
-
                             Exception serviceException = null;
                             ServiceExecutionResult serviceResult = null;
-                            IServiceRequestInfo serviceRequest = args;
 
                             try
                             {
@@ -1046,7 +1049,7 @@ public class Connection implements Closeable {
                             {
                                 try
                                 {
-                                    Object responseState = ((INetworkServiceRequestInfo)serviceRequest).ResponseState;
+                                    Object responseState = serviceRequest.getResponseState();
 
                                 if (serviceException == null)
                                 {
@@ -1058,6 +1061,7 @@ public class Connection implements Closeable {
                                     {
                                         try
                                         {
+                                            //noinspection ConstantConditions
                                             responseStream = protocol.convert(serviceResult.getExecutionResult());
                                             converted = true;
                                         }
@@ -1074,13 +1078,10 @@ public class Connection implements Closeable {
                                     }
                                     else
                                     {
+                                        //noinspection ConstantConditions
                                         if (serviceResult.getExecutionResult() != null)
                                         {
                                             responseStream = (ByteArrayOutputStream)serviceResult.getExecutionResult();
-                                        }
-                                        else
-                                        {
-                                            responseStream = null;
                                         }
                                     }
 
@@ -1089,7 +1090,8 @@ public class Connection implements Closeable {
                                         response = new SharkOutgoingResponseMessage(request.getTransactionId(), RequestResult.OK, responseStream, converted, responseState);
                                     }
                                 }
-                                else if (serviceException instanceof InvalidServiceDataException)
+                                else //noinspection ConstantConditions
+                                    if (serviceException instanceof InvalidServiceDataException)
                                 {
                                     response = new SharkOutgoingResponseMessage(request.getTransactionId(), RequestResult.MalformedRequestData, null, false, responseState);
 
@@ -1099,7 +1101,8 @@ public class Connection implements Closeable {
                                     );
 
                                 }
-                                else if (serviceException instanceof NotProceedServiceException)
+                                else //noinspection ConstantConditions
+                                        if (serviceException instanceof NotProceedServiceException)
                                 {
                                     response = new SharkOutgoingResponseMessage(request.getTransactionId(), RequestResult.NotProceed, null, false, responseState);
                                 }
@@ -1125,11 +1128,6 @@ public class Connection implements Closeable {
                                     response = new SharkOutgoingResponseMessage(request.getTransactionId(), RequestResult.ProcessingError, null, false, responseState);
                                 }
                             }
-                            catch (InterruptedException e)
-                            {
-                                Object responseState = ((INetworkServiceRequestInfo)serviceRequest).ResponseState;
-                                response = new SharkOutgoingResponseMessage(request.getTransactionId(), RequestResult.ProcessingError, null, false, responseState);
-                            }
                             finally
                             {
                                 queue(response);
@@ -1143,7 +1141,7 @@ public class Connection implements Closeable {
 
                             if (incomingMessage.getTransactionId() == 0) throw new UnsupportedOperationException();
 
-                            ServiceRequestState state = null;
+                            ServiceRequestState state;
 
                             synchronized (executingRequestStates)
                             {
@@ -1153,6 +1151,7 @@ public class Connection implements Closeable {
 
                             RequestResult result = ((SharkIncomingResponseMessage)incomingMessage).getResult();
 
+                            //noinspection ConstantConditions
                             if (state.getExpecting() != ByteArrayInputStream.class)
                             {
                                 Object responseData = null;
@@ -1170,6 +1169,7 @@ public class Connection implements Closeable {
                                 {
                                     if (exception != null)
                                     {
+                                        //noinspection ConstantConditions
                                         state._notifyFailure(exception instanceof InterruptedException ? RequestResult.Aborted : RequestResult.MalformedResponseData, exception);
                                     }
                                     else
@@ -1204,14 +1204,14 @@ public class Connection implements Closeable {
                     Log.stringify(e.getStackTrace())
             );
 
-            try { Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e))); } catch (InterruptedException ignored) {}
+            try { //noinspection ConstantConditions
+                Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e))); } catch (InterruptedException ignored) {}
             beginClose(ConnectionCloseReason.ErrorDuringProcessing);
         }
     }
 
-    private void beginProcess()
-    {
-        IncomingMessage incomingMessage = null;
+    private void beginProcess() throws InterruptedException {
+        IncomingMessage incomingMessage;
 
         synchronized (incomingMsgQueue)
         {
@@ -1232,12 +1232,12 @@ public class Connection implements Closeable {
             if (state == ConnectionState.Active && protocol.isReadingOperationNeeded(this) && (activeOperations & Operations.Reading) == Operations.None)
             {
                 activeOperations |= Operations.Reading;
-                NetworkOperator.enqueueIO(read);
+                NetworkOperator._enqueueIO(this::read);
             }
 
             if (state == ConnectionState.Active && protocol.isProcessingOperationNeeded(this))
             {
-                NetworkOperator.enqueueProcessor(beginProcess);
+                NetworkOperator._enqueueProcessor(this::beginProcess);
             }
             else
             {
@@ -1263,8 +1263,7 @@ public class Connection implements Closeable {
         }
     }
 
-    private void read()
-    {
+    private void read() throws InterruptedException {
         boolean hasWaitingData = false;
 
         try
@@ -1285,7 +1284,7 @@ public class Connection implements Closeable {
                 }
                 else
                 {
-                    IncomingMessage message = null;
+                    IncomingMessage message;
 
                     message = protocol.readMessage(this, incomingStream);
 
@@ -1317,17 +1316,9 @@ public class Connection implements Closeable {
 
             beginClose(ConnectionCloseReason.ConnectionInterrupted);
         }
-        catch (ProtocolException e)
-        {
-            if (Framework.log) Log.warning(Connection.class,
-                    "Protocol violation detected",
-                    "Operation: " + Operations.Reading
-            );
-
-            beginClose(ConnectionCloseReason.ProtocolViolation);
-        }
         catch (Exception e)
         {
+            //noinspection ConstantConditions
             if (!(e instanceof InterruptedException) && !(e instanceof SocketTimeoutException))
             {
                 if (Framework.log) Log.error(Connection.class,
@@ -1337,7 +1328,8 @@ public class Connection implements Closeable {
                         Log.stringify(e.getStackTrace())
                 );
 
-                try { Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e))); } catch (InterruptedException ignored) {}
+                try { //noinspection ConstantConditions
+                    Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e))); } catch (InterruptedException ignored) {}
             }
 
             beginClose(ConnectionCloseReason.ErrorDuringReading);
@@ -1350,11 +1342,11 @@ public class Connection implements Closeable {
                 {
                     if (hasWaitingData)
                     {
-                        NetworkOperator.enqueueIO(read);
+                        NetworkOperator._enqueueIO(this::read);
                     }
                     else
                     {
-                        NetworkOperator.enqueueIO(read, System.currentTimeMillis() + 10);
+                        NetworkOperator._enqueueIO(this::read, System.currentTimeMillis() + 10);
                     }
                 }
                 else
@@ -1365,8 +1357,7 @@ public class Connection implements Closeable {
         }
     }
 
-    private void check()
-    {
+    private void check() throws InterruptedException {
         try
         {
             if (state == ConnectionState.Closed) return;
@@ -1379,6 +1370,7 @@ public class Connection implements Closeable {
                     {
                         while (isRequestingToCloseAtTimeUtc > System.currentTimeMillis())
                         {
+                            //noinspection ResultOfMethodCallIgnored
                             incomingStream.available();
                             Parallel.sleep();
                         }
@@ -1401,27 +1393,18 @@ public class Connection implements Closeable {
 
             if (state == ConnectionState.Active)
             {
-                if (incomingIdleTime.TotalMilliseconds > idleTimeout)
+                if (getIncomingIdleTime() > idleTimeout)
                 {
                     beginClose(ConnectionCloseReason.Timeout);
                 }
                 else
                 {
-                    if (incomingIdleTime.TotalMilliseconds > idleTimeout / 2)
+                    if (getIncomingIdleTime() > idleTimeout / 2)
                     {
                         ping();
                     }
                 }
             }
-        }
-        catch (SocketException e)
-        {
-            if (Framework.debug && Framework.log) Log.information(Connection.class,
-                    "Connection is interrupted",
-                    "Procedure: " + Operations.Checking
-            );
-
-            beginClose(ConnectionCloseReason.ConnectionInterrupted);
         }
         catch (Exception e)
         {
@@ -1434,7 +1417,8 @@ public class Connection implements Closeable {
                         Log.stringify(e.getStackTrace())
                 );
 
-                try { Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e))); } catch (InterruptedException ignored) {}
+                try { //noinspection ConstantConditions
+                    Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e))); } catch (InterruptedException ignored) {}
             }
 
             beginClose(ConnectionCloseReason.ErrorDuringChecking);
@@ -1445,7 +1429,7 @@ public class Connection implements Closeable {
             {
                 if (state != ConnectionState.Closed)
                 {
-                    NetworkOperator.enqueueChecker(check, System.currentTimeMillis() + 1000);
+                    NetworkOperator._enqueueChecker(this::check, System.currentTimeMillis() + 1000);
                 }
                 else
                 {
@@ -1455,8 +1439,7 @@ public class Connection implements Closeable {
         }
     }
 
-    private void write()
-    {
+    private void write() throws InterruptedException {
         try
         {
             if (state != ConnectionState.Active) return;
@@ -1488,6 +1471,7 @@ public class Connection implements Closeable {
                     {
                         if ((message.getType() & (Message.SharkMessage | Message.Request)) == (Message.SharkMessage | Message.Request))
                         {
+                            //noinspection ConstantConditions
                             executingRequestStates.get(message.getTransactionId())._notifyStart();
                         }
 
@@ -1534,15 +1518,6 @@ public class Connection implements Closeable {
 
             beginClose(ConnectionCloseReason.ConnectionInterrupted);
         }
-        catch (ProtocolException e)
-        {
-            if (Framework.log) Log.warning(Connection.class,
-                    "Protocol violation detected",
-                    "Operation: " + Operations.Writing
-            );
-
-            beginClose(ConnectionCloseReason.ConnectionInterrupted);
-        }
         catch (Exception e)
         {
             if (Framework.log) Log.error(Connection.class,
@@ -1552,7 +1527,8 @@ public class Connection implements Closeable {
                     Log.stringify(e.getStackTrace())
             );
 
-            try { Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e))); } catch (InterruptedException ignored) {}
+            try { //noinspection ConstantConditions
+                Parallel.queue(() -> onErrorDetectedInvoker.run(new ConnectionErrorDetectedEventArgs(this, e))); } catch (InterruptedException ignored) {}
 
             beginClose(ConnectionCloseReason.ErrorDuringWriting);
         }
@@ -1563,12 +1539,12 @@ public class Connection implements Closeable {
                 if (state == ConnectionState.Active && protocol.isReadingOperationNeeded(this) && (activeOperations & Operations.Reading) == Operations.None)
                 {
                     activeOperations |= Operations.Reading;
-                    NetworkOperator.enqueueIO(read);
+                    NetworkOperator._enqueueIO(this::read);
                 }
 
                 if (state == ConnectionState.Active && protocol.isWritingOperationNeeded(this))
                 {
-                    NetworkOperator.enqueueIO(write);
+                    NetworkOperator._enqueueIO(this::write);
                 }
                 else
                 {

@@ -16,6 +16,7 @@ public class Main extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+
         Framework.initialise(this).then(isSucceed -> {
 
             if(isSucceed) {

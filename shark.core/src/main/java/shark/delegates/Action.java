@@ -9,5 +9,5 @@ public interface Action {
     /**
      * Invokes the method
      */
-    void run();
+    void run() throws InterruptedException;
 }

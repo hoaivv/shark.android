@@ -20,9 +20,10 @@ import shark.delegates.Function2;
  */
 public final class linq<T> implements Iterable<T> {
 
-    private Function<Collection<T>> generator;
+    private final Function<Collection<T>> generator;
 
-    private T[] sample(T... sample) {
+    @SafeVarargs
+    private final T[] sample(T... sample) {
         return sample;
     }
 
@@ -34,61 +35,45 @@ public final class linq<T> implements Iterable<T> {
      * Integer adder used for {@link #sum(Function1, Function2)}
      * and {@link #average(Function1, Function2, Function2)}
      */
-    public static final Function2<Integer, Integer, Integer> IntegerAdder = (a,b) -> {
-        return (a == null ? 0 : a) + (b == null ? 0 : b);
-    };
+    public static final Function2<Integer, Integer, Integer> IntegerAdder = (a,b) -> (a == null ? 0 : a) + (b == null ? 0 : b);
 
     /**
      * Integer divider used for {@link #average(Function1, Function2, Function2)}
      */
-    public static final Function2<Integer, Integer, Integer> IntegerDivider = (a,b) -> {
-        return (a == null ? 0 : a) / (b == null ? 0 : b);
-    };
+    public static final Function2<Integer, Integer, Integer> IntegerDivider = (a,b) -> (a == null ? 0 : a) / (b == null ? 0 : b);
 
     /**
      * Long adder used for {@link #sum(Function1, Function2)}
      * and {@link #average(Function1, Function2, Function2)}
      */
-    public static final Function2<Long, Long, Long> LongAdder = (a,b) -> {
-        return (a == null ? 0 : a) + (b == null ? 0 : b);
-    };
+    public static final Function2<Long, Long, Long> LongAdder = (a,b) -> (a == null ? 0 : a) + (b == null ? 0 : b);
 
     /**
      * Long divider used for {@link #average(Function1, Function2, Function2)}
      */
-    public static final Function2<Long, Integer, Long> LongDivider = (a,b) -> {
-        return (a == null ? 0 : a) / (b == null ? 0 : b);
-    };
+    public static final Function2<Long, Integer, Long> LongDivider = (a,b) -> (a == null ? 0 : a) / (b == null ? 0 : b);
 
     /**
      * Float adder used for {@link #sum(Function1, Function2)}
      * and {@link #average(Function1, Function2, Function2)}
      */
-    public static final Function2<Float, Float, Float> FloatAdder = (a,b) -> {
-        return (a == null ? 0 : a) + (b == null ? 0 : b);
-    };
+    public static final Function2<Float, Float, Float> FloatAdder = (a,b) -> (a == null ? 0 : a) + (b == null ? 0 : b);
 
     /**
      * Float divider used for {@link #average(Function1, Function2, Function2)}
      */
-    public static final Function2<Float, Integer, Float> FloatDivider= (a,b) -> {
-        return (a == null ? 0 : a) / (b == null ? 0 : b);
-    };
+    public static final Function2<Float, Integer, Float> FloatDivider= (a,b) -> (a == null ? 0 : a) / (b == null ? 0 : b);
 
     /**
      * Double adder used for {@link #sum(Function1, Function2)}
      * and {@link #average(Function1, Function2, Function2)}
      */
-    public static final Function2<Double, Double, Double> DoubleAdder = (a,b) -> {
-        return (a == null ? 0 : a) + (b == null ? 0 : b);
-    };
+    public static final Function2<Double, Double, Double> DoubleAdder = (a,b) -> (a == null ? 0 : a) + (b == null ? 0 : b);
 
     /**
      * Double divider used for {@link #average(Function1, Function2, Function2)}
      */
-    public static final Function2<Double, Integer, Double> DoubleDivider = (a,b) -> {
-        return (a == null ? 0 : a) / (b == null ? 0 : b);
-    };
+    public static final Function2<Double, Integer, Double> DoubleDivider = (a,b) -> (a == null ? 0 : a) / (b == null ? 0 : b);
 
     /**
      * Applies LINQ to a collection
@@ -96,6 +81,7 @@ public final class linq<T> implements Iterable<T> {
      * @param <T> type of collection element
      * @return instance of {@link linq}
      */
+    @SuppressWarnings("WeakerAccess")
     public static <T> linq<T> of(Collection<T> collection) {
 
         return new linq<>(() -> collection);
@@ -157,6 +143,7 @@ public final class linq<T> implements Iterable<T> {
 
             @Override
             public <T1> T1[] toArray(T1[] a) {
+                //noinspection unchecked
                 return (T1[])array;
             }
 
@@ -210,14 +197,14 @@ public final class linq<T> implements Iterable<T> {
      */
     public static <K,V> linq<Map.Entry<K,V>> of(Map<K,V> map) {
 
-        return new linq<>(() -> map.entrySet());
+        return new linq<>(map::entrySet);
     }
 
     /**
      * Converts each of the collection elements to an element of a specified type
      * @param selector function, provides element conversion operation
      * @param <E> type of data, to which the collection elements to be converted
-     * @return instace of {@link linq} which manages a collection of converted elements
+     * @return instance of {@link linq} which manages a collection of converted elements
      */
     public <E> linq<E> select(Function1<T, E> selector) {
 
@@ -237,7 +224,7 @@ public final class linq<T> implements Iterable<T> {
      * Converts each of collection elements to a multiple elements of a specified type
      * @param selector function, provides element conversion operation
      * @param <E> type of data, to which the collection elements to be converted
-     * @return instace of {@link linq} which manages a collection of converted elements
+     * @return instance of {@link linq} which manages a collection of converted elements
      */
     public <E> linq<E> selectMany(Function1<T, Iterable<E>> selector) {
 
@@ -259,6 +246,7 @@ public final class linq<T> implements Iterable<T> {
      * Reverses the element order of the collection
      * @return instance of {@link linq} which manages the reversed collection
      */
+    @SuppressWarnings("WeakerAccess")
     public linq<T> reverse() {
 
         return new linq<>(() -> {
@@ -280,7 +268,7 @@ public final class linq<T> implements Iterable<T> {
      */
     public linq<T> where(Function1<T, Boolean> predicate) {
 
-        return new linq(() -> {
+        return new linq<>(() -> {
 
             ArrayList<T> results = new ArrayList<>();
 
@@ -299,7 +287,7 @@ public final class linq<T> implements Iterable<T> {
      */
     public linq<T> where(Function2<Integer, T, Boolean> predicate) {
 
-        return new linq(() -> {
+        return new linq<>(() -> {
 
             ArrayList<T> results = new ArrayList<>();
             int index = 0;
@@ -323,10 +311,10 @@ public final class linq<T> implements Iterable<T> {
 
         return new linq<>(() -> {
 
-            ArrayList<T> values = new ArrayList<>();
+            ArrayList<T> values;
 
             synchronized (generator) {
-                for (T one : generator.run()) values.add(one);
+                values = new ArrayList<>(generator.run());
             }
 
             for (int i = 0; i < values.size() - 1; i++) {
@@ -356,10 +344,10 @@ public final class linq<T> implements Iterable<T> {
 
         return new linq<>(() -> {
 
-            ArrayList<T> values = new ArrayList<>();
+            ArrayList<T> values;
 
             synchronized (generator) {
-                for (T one : generator.run()) values.add(one);
+                values = new ArrayList<>(generator.run());
             }
 
             for (int i = 0; i < values.size() - 1; i++) {
@@ -401,6 +389,7 @@ public final class linq<T> implements Iterable<T> {
                         results.put(key, linq.of(new ArrayList<>()));
                     }
 
+                    //noinspection ConstantConditions
                     results.get(key).generator.run().add(one);
                 }
             }
@@ -414,15 +403,12 @@ public final class linq<T> implements Iterable<T> {
      * @return first element of the collection
      * @exception NoSuchElementException throws if the collection is empty
      */
+    @SuppressWarnings("WeakerAccess")
     public T first() {
 
-        ArrayList<T> buffer = new ArrayList<>();
-
         synchronized (generator) {
-            for (T one : generator.run()) return one;
+            return generator.run().iterator().next();
         }
-
-        throw new NoSuchElementException();
     }
 
     /**
@@ -431,6 +417,7 @@ public final class linq<T> implements Iterable<T> {
      * @return first element which satisfied the condition
      * @throws NoSuchElementException throws if no elements satisfied the condition
      */
+    @SuppressWarnings("WeakerAccess")
     public T first(Function1<T, Boolean> predicate) {
 
         synchronized (generator) {
@@ -447,14 +434,14 @@ public final class linq<T> implements Iterable<T> {
      * Gets first element of the collection
       * @return first element of the collection or null if the collection is empty
      */
+    @SuppressWarnings("WeakerAccess")
     public T firstOrDefault() {
 
         synchronized (generator) {
 
-            for(T one : generator.run()) return one;
+            Iterator<T> iterator = generator.run().iterator();
+            return iterator.hasNext() ? iterator.next() : null;
         }
-
-        return null;
     }
 
     /**
@@ -463,6 +450,7 @@ public final class linq<T> implements Iterable<T> {
      * @return first element which satisfied the condition or null if no elements satisfied the
      * condition
      */
+    @SuppressWarnings("WeakerAccess")
     public T firstOrDefault(Function1<T, Boolean> predicate) {
 
         synchronized (generator) {
@@ -498,7 +486,7 @@ public final class linq<T> implements Iterable<T> {
 
     /**
      * Gets last element of the collection
-     * @return last element of the collecion or null if the collection is empty
+     * @return last element of the collection or null if the collection is empty
      */
     public T lastOrDefault() {
 
@@ -601,7 +589,7 @@ public final class linq<T> implements Iterable<T> {
             synchronized (generator) {
 
                 for (T one : generator.run()) {
-                    if (skipped++ < count) continue;;
+                    if (skipped++ < count) continue;
                     buffer.add(one);
                 }
             }
@@ -898,7 +886,7 @@ public final class linq<T> implements Iterable<T> {
 
     /**
      * Gets number of elements of the collection
-     * @return number of elmeents of the collection
+     * @return number of elements of the collection
      */
     public int count() {
 
@@ -934,13 +922,9 @@ public final class linq<T> implements Iterable<T> {
      */
     public HashSet<T> toHashSet() {
 
-        HashSet<T> results = new HashSet<>();
-
         synchronized (generator) {
-            results.addAll(generator.run());
+            return new HashSet<>(generator.run());
         }
-
-        return results;
     }
 
     /**
@@ -950,6 +934,7 @@ public final class linq<T> implements Iterable<T> {
     public T[] toArray() {
 
         synchronized (generator) {
+            //noinspection unchecked
             return generator.run().toArray(sample());
         }
     }

@@ -4,21 +4,21 @@ import java.io.OutputStream;
 
 public final class SharkOutgoingRequestMessage extends OutgoingRequestMessage {
 
-    private String serviceName;
+    private final String serviceName;
 
     public String getServiceName() {
         return serviceName;
     }
 
-    private boolean dataConvereted;
+    private final boolean dataConverted;
 
-    public boolean isDataConvereted() {
-        return dataConvereted;
+    public boolean isDataConverted() {
+        return dataConverted;
     }
 
     public SharkOutgoingRequestMessage(long transactionId, String serviceName, OutputStream data, boolean isDataConverted, Object state) {
         super(transactionId, Message.SharkMessage, data, state);
         this.serviceName = serviceName;
-        this.dataConvereted = isDataConverted;
+        this.dataConverted = isDataConverted;
     }
 }

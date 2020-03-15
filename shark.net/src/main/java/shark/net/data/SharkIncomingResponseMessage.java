@@ -6,7 +6,7 @@ import shark.net.RequestResult;
 
 public final class SharkIncomingResponseMessage extends IncomingResponseMessage {
 
-    private RequestResult result;
+    private final RequestResult result;
 
     public RequestResult getResult() {
         return result;

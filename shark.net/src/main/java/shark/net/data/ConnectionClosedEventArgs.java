@@ -8,7 +8,7 @@ import shark.net.Connection;
 public class ConnectionClosedEventArgs extends ConnectionEventArgs {
 
     private final ConnectionCloseReason reason;
-    private SocketAddress remoteServer;
+    private final SocketAddress remoteServer;
 
     public ConnectionCloseReason getReason() {
         return reason;

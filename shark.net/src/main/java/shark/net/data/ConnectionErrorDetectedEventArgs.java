@@ -4,7 +4,7 @@ import shark.net.Connection;
 
 public class ConnectionErrorDetectedEventArgs extends ConnectionEventArgs {
 
-    private Exception exception;
+    private final Exception exception;
 
     public Exception getException() {
         return exception;

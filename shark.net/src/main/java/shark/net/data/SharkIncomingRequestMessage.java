@@ -4,7 +4,7 @@ import java.io.InputStream;
 
 public final class SharkIncomingRequestMessage extends IncomingRequestMessage {
 
-    private String serviceName;
+    private final String serviceName;
 
     public String getServiceName() {
         return serviceName;

@@ -103,7 +103,7 @@ public final class Locker {
         return this;
     }
 
-    public Locker then(Action action) {
+    public Locker then(Action action) throws Exception {
         if (action == null) throw new IllegalArgumentException();
 
         synchronized (_objects) {
