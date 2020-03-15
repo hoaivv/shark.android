@@ -1,22 +1,28 @@
 package shark.net.data;
 
-import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+
+import shark.net.Connection;
 
 @SuppressWarnings("WeakerAccess")
-public class ConnectionClosedEventArgs {
+public class ConnectionClosedEventArgs extends ConnectionEventArgs {
 
     private final ConnectionCloseReason reason;
-    private InetSocketAddress remoteServer;
+    private SocketAddress remoteServer;
 
     public ConnectionCloseReason getReason() {
         return reason;
     }
 
-    public InetSocketAddress getRemoteServer() {
+    public SocketAddress getRemoteServer() {
         return remoteServer;
     }
 
-    ConnectionClosedEventArgs(ConnectionCloseReason reason) {
+    public ConnectionClosedEventArgs(Connection connection, SocketAddress remoteServer, ConnectionCloseReason reason) {
+
+        super(connection);
+
+        this.remoteServer = remoteServer;
         this.reason = reason;
     }
 }
