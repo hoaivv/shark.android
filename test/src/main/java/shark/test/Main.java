@@ -4,7 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.webkit.WebView;
 
-import shark.Framework;
+import shark.utils.http;
 
 @SuppressWarnings("ALL")
 public class Main extends Activity {
@@ -17,11 +17,9 @@ public class Main extends Activity {
         super.onCreate(savedInstanceState);
 
 
-        Framework.initialise(this).then(isSucceed -> {
-
-            if(isSucceed) {
-                Framework.start(new TestService());
-            }
+        http.at("http://api.ahacafe.vn/music/song/677a8f72-3232-4f93-95e4-149472168299").download().then(data -> {
+            System.out.print("a");
         });
+
     }
 }

@@ -22,12 +22,8 @@ public final class linq<T> implements Iterable<T> {
 
     private final Function<Collection<T>> generator;
 
-    @SafeVarargs
-    private final T[] sample(T... sample) {
-        return sample;
-    }
-
     private linq(Function<Collection<T>> source) {
+
         this.generator = source;
     }
 
@@ -931,11 +927,11 @@ public final class linq<T> implements Iterable<T> {
      * Converts the managed collection to an array
      * @return instance of {@link T[]}
      */
-    public T[] toArray() {
+    public <T> T[] toArray(T[] sample) {
 
         synchronized (generator) {
             //noinspection unchecked
-            return generator.run().toArray(sample());
+            return generator.run().toArray(sample);
         }
     }
 

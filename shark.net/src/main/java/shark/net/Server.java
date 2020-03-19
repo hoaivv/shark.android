@@ -1,12 +1,10 @@
 package shark.net;
 
-import java.net.ServerSocket;
-
 import shark.components.IAutomation;
 import shark.runtime.Worker;
 
 public class Server extends Worker implements IAutomation {
-
+/*
     private ServerSocket listener;
     private int[] ports;
 
@@ -30,4 +28,5 @@ public class Server extends Worker implements IAutomation {
             }
         }
     }
+*/
 }

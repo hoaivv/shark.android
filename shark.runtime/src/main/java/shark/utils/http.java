@@ -15,8 +15,11 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import shark.delegates.Action1;
+import shark.io.File;
 import shark.runtime.Promise;
 
 /**
@@ -247,6 +250,106 @@ public final class http {
 
             return promise;
         }
+
+        /**
+         * Downloads response body as a byte array. This method provides support for HTTP partial
+         * content response (HTTP 206)
+         * @return byte array if downloading operation is succeed; otherwise null
+         */
+        public Promise<byte[]> download() {
+
+            return send().then(response -> {
+
+                try (ByteArrayOutputStream result = new ByteArrayOutputStream()) {
+
+                    switch (response.getStatus()) {
+                        case 200:
+
+                            result.write(response.getBytes().result());
+                            return result.toByteArray();
+
+                        case 206:
+
+                            Map<String, List<String>> headers = response.headers();
+                            if (!headers.containsKey("Content-Range") || headers.get("Content-Range").size() != 1) return null;
+
+                            result.write(response.getBytes().result());
+                            Long[] ranges = linq.of(headers.get("Content-Range").get(0).split(" |\\-|/")).skip(1).select(i -> Long.parseLong(i)).toArray(new Long[0]);
+
+                            while (ranges[1] < ranges[2] -1) {
+
+                                response = http.at(url).header("Range", "bytes="+(ranges[1]+1)+"-").send().result();
+
+                                headers = response.headers();
+                                if (response.getStatus() != 206 || !headers.containsKey("Content-Range") || headers.get("Content-Range").size() != 1) return null;
+
+                                byte[] buffer = response.getBytes().result();
+                                result.write(buffer, 0, buffer.length);
+
+                                ranges = linq.of(headers.get("Content-Range").get(0).split(" |\\-|/")).skip(1).select(i -> Long.parseLong(i)).toArray(new Long[0]);
+                            }
+
+                            return result.toByteArray();
+
+                        default:
+                            return null;
+                    }
+                }
+                catch (Exception e)
+                {
+                    return null;
+                }
+            });
+        }
+
+        /**
+         * Downloads response body to a file. This method provides support for HTTP partial content
+         * response (HTTP 206)
+         * @param file file, into which response body to be written
+         * @return true if downloading operation is succeed; otherwise false
+         */
+        public Promise<Boolean> download(File file) {
+
+            return send().then(response -> {
+                try {
+                    switch (response.getStatus()) {
+                        case 200:
+
+                            file.writeAllBytes(response.getBytes().result());
+                            return true;
+
+                        case 206:
+
+                            Map<String, List<String>> headers = response.headers();
+                            if (!headers.containsKey("Content-Range") || headers.get("Content-Range").size() != 1) return false;
+
+                            file.writeAllBytes(response.getBytes().result());
+                            Long[] ranges = linq.of(headers.get("Content-Range").get(0).split(" |\\-|/")).skip(1).select(i -> Long.parseLong(i)).toArray(new Long[0]);
+
+                            while (ranges[1] < ranges[2] -1) {
+
+                                response = http.at(url).header("Range", "bytes="+(ranges[1]+1)+"-").send().result();
+
+                                headers = response.headers();
+                                if (response.getStatus() != 206 || !headers.containsKey("Content-Range") || headers.get("Content-Range").size() != 1) return false;
+
+                                file.appendAllBytes(response.getBytes().result());
+
+                                ranges = linq.of(headers.get("Content-Range").get(0).split(" |\\-|/")).skip(1).select(i -> Long.parseLong(i)).toArray(new Long[0]);
+                            }
+
+                            return true;
+
+                        default:
+                            return false;
+                    }
+                }
+                catch (Exception e)
+                {
+                    return false;
+                }
+            });
+        }
     }
 
     /**
@@ -265,13 +368,21 @@ public final class http {
         }
 
         /**
-         * Get HTTP status code
+         * Gets HTTP status code
          * @return HTTP status code of the response
          * @throws IOException throws if the response is not valid
          */
         @SuppressWarnings("WeakerAccess")
         public int getStatus() throws IOException {
             return connection.getResponseCode();
+        }
+
+        /**
+         * Gets HTTP Resonse headers
+         * @return A dictionary contains all response headers
+         */
+        public Map<String, List<String>> headers() {
+            return connection.getHeaderFields();
         }
 
         /**
